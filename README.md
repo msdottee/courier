@@ -1,4 +1,6 @@
 # Courier
+![CI](https://github.com/msdottee/courier/workflows/CI/badge.svg?branch=master)
+
 Courier is a cloud native, S3-backed SFTP 
 server with Webhook support.
 
