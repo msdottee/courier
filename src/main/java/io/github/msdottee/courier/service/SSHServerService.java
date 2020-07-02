@@ -11,7 +11,7 @@ import java.io.IOException;
 @Service
 public class SSHServerService {
 
-    @Value("${sshd.port}")
+    @Value("${sshd.port:2200}")
     private int port;
 
     @PostConstruct
