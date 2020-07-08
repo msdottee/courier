@@ -30,3 +30,5 @@ build
 
 # IntelliJ
 .idea
+
+src/main/resources/config/application.properties
