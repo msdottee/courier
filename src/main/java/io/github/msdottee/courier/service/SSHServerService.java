@@ -19,7 +19,6 @@ public class SSHServerService {
     @Autowired
     private PublicKeyAuthenticatorService publicKeyAuthenticatorService;
 
-
     @PostConstruct
     public void initializeSshServer() throws IOException {
         SshServer sshd = SshServer.setUpDefaultServer();
