@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.servlet.http.HttpSession;
 import javax.transaction.Transactional;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -25,7 +24,7 @@ import java.util.List;
 @Transactional
 public class PublicKeyAuthenticatorService implements PublickeyAuthenticator {
 
-    private Logger LOGGER = LoggerFactory.getLogger(PublicKeyAuthenticatorService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(PublicKeyAuthenticatorService.class);
 
     @Autowired
     private UserRepository userRepository;
@@ -67,7 +66,6 @@ public class PublicKeyAuthenticatorService implements PublickeyAuthenticator {
             } catch (IllegalArgumentException | IOException | GeneralSecurityException e) {
                 LOGGER.error("Failed to Login User " + username +
                         " with Unparseable Public Key retrieved from the database.", e);
-                return false;
             }
         }
 
