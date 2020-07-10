@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: example
+    command: --init-file /data/application/init.sql
+    ports:
+      - "13306:3306"
+    volumes:
+    - "dbdata:/var/lib/mysql"
+    - "./src/test/resources/init.sql:/data/application/init.sql"
+
+volumes:
+  dbdata:
