@@ -1,4 +1,4 @@
-# 💼 Courier 💼
+# 🚚💼 Courier 🚚💼
 [![CI](https://github.com/msdottee/courier/workflows/CI/badge.svg?branch=master)](https://github.com/msdottee/courier/actions?query=workflow%3ACI+branch%3Amaster)
 
 Courier is a cloud native, S3-backed SFTP 
