@@ -11,6 +11,11 @@ repositories {
 dependencies {
     implementation 'org.apache.sshd:sshd-sftp:2.5.0'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+//    implementation 'mysql:mysql-connector-java:8.0.15'
+//    implementation 'mysql:mysql-connector-java:5.1.6'
+    runtimeOnly 'mysql:mysql-connector-java'
+
     compileOnly 'org.springframework.boot:spring-boot-devtools'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
