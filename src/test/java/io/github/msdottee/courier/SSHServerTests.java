@@ -1,11 +1,17 @@
 package io.github.msdottee.courier;
 
+import io.github.msdottee.courier.entity.SshPublicKey;
+import io.github.msdottee.courier.entity.User;
+import io.github.msdottee.courier.repository.SshPublicKeyRepository;
+import io.github.msdottee.courier.repository.UserRepository;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.SshException;
 import org.apache.sshd.common.util.security.SecurityUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -14,8 +20,12 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.security.KeyPair;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,6 +33,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 public class SSHServerTests {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private SshPublicKeyRepository sshPublicKeyRepository;
+
+    @BeforeEach
+    public void before() throws IOException {
+        User user = userRepository.findByUserName("test");
+
+        if (user != null) {
+            List<SshPublicKey> sshPublicKeyList = sshPublicKeyRepository.findByUser(user);
+            sshPublicKeyRepository.deleteAll(sshPublicKeyList);
+            userRepository.delete(user);
+        }
+
+        User newUser = new User();
+        newUser.setUserName("test");
+
+        userRepository.save(newUser);
+
+        SshPublicKey newSshPublicKey = new SshPublicKey();
+        newSshPublicKey.setSshKey(Files.readString(
+                Paths.get("src/test/resources/keypairs/test/id_rsa.pub"), StandardCharsets.UTF_8));
+        newSshPublicKey.setUser(newUser);
+
+        sshPublicKeyRepository.save(newSshPublicKey);
+    }
 
     @Test
     public void testIsSuccessfulWithUserNameAndKeyFromDatabase() throws IOException, GeneralSecurityException {
