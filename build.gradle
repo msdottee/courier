@@ -12,8 +12,8 @@ dependencies {
     implementation 'org.apache.sshd:sshd-sftp:2.5.0'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-//    implementation 'mysql:mysql-connector-java:8.0.15'
-//    implementation 'mysql:mysql-connector-java:5.1.6'
+    implementation platform('com.amazonaws:aws-java-sdk-bom:1.11.820')
+    implementation 'com.amazonaws:aws-java-sdk-s3'
     runtimeOnly 'mysql:mysql-connector-java'
 
     compileOnly 'org.springframework.boot:spring-boot-devtools'
