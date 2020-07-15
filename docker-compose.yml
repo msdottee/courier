@@ -10,8 +10,21 @@ services:
     ports:
       - "13306:3306"
     volumes:
-    - "dbdata:/var/lib/mysql"
-    - "./src/test/resources/init.sql:/data/application/init.sql"
+      - "dbdata:/var/lib/mysql"
+      - "./src/test/resources/init.sql:/data/application/init.sql"
+
+  minio:
+    image: minio/minio
+    restart: always
+    environment:
+      MINIO_ACCESS_KEY: exampleaccesskey
+      MINIO_SECRET_KEY: examplesecretkey
+    ports:
+      - "19000:9000"
+    volumes:
+      - "miniodata:/data"
+    command: server /data
 
 volumes:
   dbdata:
+  miniodata:
