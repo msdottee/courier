@@ -10,6 +10,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -422,5 +423,20 @@ public class S3FileSystem extends FileSystem {
     @Override
     public WatchService newWatchService() throws IOException {
         throw new UnsupportedOperationException("S3 does not support file watching.");
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        S3FileSystem that = (S3FileSystem) o;
+        return Objects.equals(s3FileSystemProvider, that.s3FileSystemProvider) &&
+                Objects.equals(amazonS3, that.amazonS3) &&
+                Objects.equals(bucket, that.bucket);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(s3FileSystemProvider, amazonS3, bucket);
     }
 }

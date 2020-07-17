@@ -1,76 +1,81 @@
 package io.github.msdottee.courier.service;
 
+import org.junit.jupiter.api.Test;
+
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
-import java.util.Objects;
 
-public class S3Path implements Path {
+import static org.assertj.core.api.Assertions.assertThat;
 
-    private final FileSystem fileSystem;
+public class S3PathTest {
 
-    private final String path;
+    private static final S3FileSystem S3_FILE_SYSTEM =
+            new S3FileSystem(null, null, "bucket");
 
-    public S3Path(FileSystem fileSystem, String path) {
-        this.fileSystem = fileSystem;
-        this.path = path;
+    @Test
+    public void ensureGetFileSystemReturnsParentFileSystem() {
+        Path path = S3_FILE_SYSTEM.getPath("test");
+
+        assertThat(path.getFileSystem()).isSameAs(S3_FILE_SYSTEM);
     }
 
-    /**
-     * Returns the file system that created this object.
-     *
-     * @return the file system that created this object
-     */
-    @Override
-    public FileSystem getFileSystem() {
-        return fileSystem;
+    @Test
+    public void ensureIsAbsoluteIsTrueWhenPathStartsWithForwardSlash() {
+        Path path = S3_FILE_SYSTEM.getPath("/absolute/path");
+
+        assertThat(path.isAbsolute()).isTrue();
     }
 
-    /**
-     * Tells whether or not this path is absolute.
-     *
-     * <p> An absolute path is complete in that it doesn't need to be combined
-     * with other path information in order to locate a file.
-     *
-     * @return {@code true} if, and only if, this path is absolute
-     */
-    @Override
-    public boolean isAbsolute() {
-        return path.startsWith(getFileSystem().getSeparator());
+    @Test
+    public void ensureIsAbsoluteIsFalseWhenPathDoesNotStartWithForwardSlash() {
+        Path path = S3_FILE_SYSTEM.getPath("relative/path");
+
+        assertThat(path.isAbsolute()).isFalse();
     }
 
-    /**
-     * Returns the root component of this path as a {@code Path} object,
-     * or {@code null} if this path does not have a root component.
-     *
-     * @return a path representing the root component of this path,
-     * or {@code null}
-     */
-    @Override
-    public Path getRoot() {
-        return path.startsWith(getFileSystem().getSeparator()) ?
-                new S3Path(getFileSystem(), getFileSystem().getSeparator()) :
-                null;
+    @Test
+    public void ensureGetRootReturnsRootPathForAbsolutePath() {
+        Path path = S3_FILE_SYSTEM.getPath("/absolute/path");
+
+        assertThat(path.getRoot()).isEqualTo(S3_FILE_SYSTEM.getPath("/"));
     }
 
-    /**
-     * Returns the name of the file or directory denoted by this path as a
-     * {@code Path} object. The file name is the <em>farthest</em> element from
-     * the root in the directory hierarchy.
-     *
-     * @return a path representing the name of the file or directory, or
-     * {@code null} if this path has zero elements
-     */
-    @Override
-    public Path getFileName() {
-        if (path.equals(getFileSystem().getSeparator())) {
-            return null;
-        }
+    @Test
+    public void ensureGetRootReturnsNullForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("relative/path");
 
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
-        return new S3Path(fileSystem, pathPieces[pathPieces.length - 1]);
+        assertThat(path.getRoot()).isNull();
+    }
+
+    @Test
+    public void ensureGetFileNameReturnsFileNameForPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a");
+
+        assertThat(path.getFileName()).isEqualTo(S3_FILE_SYSTEM.getPath("a"));
+    }
+
+    @Test
+    public void ensureGetFileNameReturnsFileNameForNestedPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.getFileName()).isEqualTo(S3_FILE_SYSTEM.getPath("c"));
+    }
+
+    @Test
+    public void ensureGetFileNameReturnsNullForRootPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/");
+
+        assertThat(path.getFileName()).isNull();
+    }
+
+    @Test
+    public void ensureGetFileNameReturnsNullForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.getFileName()).isEqualTo(S3_FILE_SYSTEM.getPath("c"));
     }
 
     /**
@@ -95,28 +100,25 @@ public class S3Path implements Path {
      * </pre></blockquote>
      *
      * @return a path representing the path's parent
+     *
+     *     @Override
+     *     public Path getParent() {
+     *
+     *     }
      */
-    @Override
-    public Path getParent() {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
 
-        if (pathPieces.length == 1) {
-            return new S3Path(getFileSystem(), getFileSystem().getSeparator());
-        }
-
-        return null;
-    }
 
     /**
      * Returns the number of name elements in the path.
      *
      * @return the number of elements in the path, or {@code 0} if this path
      * only represents a root component
+     *
+     *     @Override
+     *     public int getNameCount() {
+     *
+     *     }
      */
-    @Override
-    public int getNameCount() {
-        return path.split(getFileSystem().getSeparator()).length;
-    }
 
     /**
      * Returns a name element of this path as a {@code Path} object.
@@ -131,25 +133,13 @@ public class S3Path implements Path {
      * @throws IllegalArgumentException if {@code index} is negative, {@code index} is greater than or
      *                                  equal to the number of elements, or this path has zero name
      *                                  elements
+     *
+     *                                      @Override
+     *     public Path getName(int index) {
+     *
+     *     }
      */
-    @Override
-    public Path getName(int index) {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
 
-        if (index < 0) {
-            throw new IllegalArgumentException("Index is negative.");
-        }
-
-        if (index > pathPieces.length - 1) {
-            throw new IllegalArgumentException("Index is greater than the number of path elements.");
-        }
-
-        if (path.equals(getFileSystem().getSeparator())) {
-            throw new IllegalArgumentException("Path has zero elements.");
-        }
-
-        return new S3Path(getFileSystem(), pathPieces[index]);
-    }
 
     /**
      * Returns a relative {@code Path} that is a subsequence of the name
@@ -170,47 +160,13 @@ public class S3Path implements Path {
      * @throws IllegalArgumentException if {@code beginIndex} is negative, or greater than or equal to
      *                                  the number of elements. If {@code endIndex} is less than or
      *                                  equal to {@code beginIndex}, or larger than the number of elements.
+     *
+     *                                      @Override
+     *     public Path subpath(int beginIndex, int endIndex) {
+     *
+     *     }
      */
-    @Override
-    public Path subpath(int beginIndex, int endIndex) {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
 
-        if (beginIndex < 0) {
-            throw new IllegalArgumentException("Begin index is negative.");
-        }
-
-        if (endIndex < 0) {
-            throw new IllegalArgumentException("End index is negative");
-        }
-
-        if (beginIndex > pathPieces.length - 1) {
-            throw new IllegalArgumentException("Begin index is greater than the number of path elements.");
-        }
-
-        if (endIndex > pathPieces.length - 1) {
-            throw new IllegalArgumentException("End index is greater than the number of path elements.");
-        }
-
-        if (beginIndex > endIndex) {
-            throw new IllegalArgumentException("Begin index is greater than the end index.");
-        }
-
-        if (path.equals(getFileSystem().getSeparator())) {
-            throw new IllegalArgumentException("Path has zero elements.");
-        }
-
-        StringBuilder subpath = new StringBuilder();
-
-        for (int i = beginIndex; i < endIndex; i++) {
-            subpath.append(pathPieces[i]);
-
-            if (i < endIndex - 1) {
-                subpath.append(getFileSystem().getSeparator());
-            }
-        }
-
-        return new S3Path(getFileSystem(), subpath.toString());
-    }
 
     /**
      * Tests if this path starts with the given path.
@@ -232,11 +188,13 @@ public class S3Path implements Path {
      * @param other the given path
      * @return {@code true} if this path starts with the given path; otherwise
      * {@code false}
+     *
+     *     @Override
+     *     public boolean startsWith(Path other) {
+     *         return path.startsWith(other.toString());
+     *     }
      */
-    @Override
-    public boolean startsWith(Path other) {
-        return path.startsWith(other.toString());
-    }
+
 
     /**
      * Tests if this path ends with the given path.
@@ -260,11 +218,13 @@ public class S3Path implements Path {
      * @param other the given path
      * @return {@code true} if this path ends with the given path; otherwise
      * {@code false}
+     *
+     *     @Override
+     *     public boolean endsWith(Path other) {
+     *         return path.endsWith(other.toString());
+     *     }
      */
-    @Override
-    public boolean endsWith(Path other) {
-        return path.endsWith(other.toString());
-    }
+
 
     /**
      * Returns a path that is this path with redundant name elements eliminated.
@@ -289,11 +249,13 @@ public class S3Path implements Path {
      * does not have a root component and all name elements are redundant
      * @see #getParent
      * @see #toRealPath
+     *
+     *     @Override
+     *     public Path normalize() {
+     *         return this;
+     *     }
      */
-    @Override
-    public Path normalize() {
-        return this;
-    }
+
 
     /**
      * Resolve the given path against this path.
@@ -312,11 +274,12 @@ public class S3Path implements Path {
      * @param other the path to resolve against this path
      * @return the resulting path
      * @see #relativize
+     *
+     *     @Override
+     *     public Path resolve(Path other) {
+     *         return this;
+     *     }
      */
-    @Override
-    public Path resolve(Path other) {
-        return this;
-    }
 
     /**
      * Constructs a relative path between this path and a given path.
@@ -354,11 +317,11 @@ public class S3Path implements Path {
      * equal
      * @throws IllegalArgumentException if {@code other} is not a {@code Path} that can be relativized
      *                                  against this path
+     *                                      @Override
+     *     public Path relativize(Path other) {
+     *         return null;
+     *     }
      */
-    @Override
-    public Path relativize(Path other) {
-        return null;
-    }
 
     /**
      * Returns a URI to represent this path.
@@ -406,11 +369,11 @@ public class S3Path implements Path {
      * @throws SecurityException In the case of the default provider, and a security manager
      *                           is installed, the {@link #toAbsolutePath toAbsolutePath} method
      *                           throws a security exception.
+     *                               @Override
+     *     public URI toUri() {
+     *         return null;
+     *     }
      */
-    @Override
-    public URI toUri() {
-        return null;
-    }
 
     /**
      * Returns a {@code Path} object representing the absolute path of this
@@ -429,11 +392,12 @@ public class S3Path implements Path {
      *                           manager's {@link SecurityManager#checkPropertyAccess(String)
      *                           checkPropertyAccess} method is invoked to check access to the
      *                           system property {@code user.dir}
+     *                               @Override
+     *     public Path toAbsolutePath() {
+     *         return this;
+     *     }
      */
-    @Override
-    public Path toAbsolutePath() {
-        return this;
-    }
+
 
     /**
      * Returns the <em>real</em> path of an existing file.
@@ -473,11 +437,12 @@ public class S3Path implements Path {
      *                           this path is not absolute, its {@link SecurityManager#checkPropertyAccess(String)
      *                           checkPropertyAccess} method is invoked to check access to the
      *                           system property {@code user.dir}
+     *                               @Override
+     *     public Path toRealPath(LinkOption... options) throws IOException {
+     *         return null;
+     *     }
      */
-    @Override
-    public Path toRealPath(LinkOption... options) throws IOException {
-        return null;
-    }
+
 
     /**
      * Registers the file located by this path with a watch service.
@@ -525,11 +490,12 @@ public class S3Path implements Path {
      * @throws SecurityException             In the case of the default provider, and a security manager is
      *                                       installed, the {@link SecurityManager#checkRead(String) checkRead}
      *                                       method is invoked to check read access to the file.
+     *                                           @Override
+     *     public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
+     *         throw new UnsupportedOperationException("File watching is not supported by S3 paths.");
+     *     }
      */
-    @Override
-    public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
-        throw new UnsupportedOperationException("File watching is not supported by S3 paths.");
-    }
+
 
     /**
      * Compares two abstract paths lexicographically. The ordering defined by
@@ -546,24 +512,12 @@ public class S3Path implements Path {
      * the argument, or a value greater than zero if this path is
      * lexicographically greater than the argument
      * @throws ClassCastException if the paths are associated with different providers
+     *
+     *
+     @Override
+     public int compareTo(Path other) {
+     S3Path otherS3 = (S3Path) other;
+     return path.compareTo(otherS3.toString());
+     }
      */
-    @Override
-    public int compareTo(Path other) {
-        S3Path otherS3 = (S3Path) other;
-        return path.compareTo(otherS3.toString());
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        S3Path paths = (S3Path) o;
-        return Objects.equals(fileSystem, paths.fileSystem) &&
-                Objects.equals(path, paths.path);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(fileSystem, path);
-    }
 }
