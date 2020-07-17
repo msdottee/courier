@@ -10,6 +10,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
@@ -433,7 +434,7 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public <V extends FileAttributeView> V getFileAttributeView(Path path, Class<V> type, LinkOption... options) {
-        return null;
+        return (V) new S3FileAttributeView();
     }
 
     /**
@@ -454,7 +455,7 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
-        return null;
+        return (A) new S3FileAttributes();
     }
 
     /**
@@ -479,7 +480,7 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-        return null;
+        return new HashMap<>();
     }
 
     /**

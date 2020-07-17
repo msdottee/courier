@@ -29,7 +29,7 @@ public class S3FileSystemFactory implements FileSystemFactory {
      */
     @Override
     public Path getUserHomeDir(SessionContext session) throws IOException {
-        return new S3Path();
+        return new S3Path(createFileSystem(session), "/" + session.getUsername());
     }
 
     /**

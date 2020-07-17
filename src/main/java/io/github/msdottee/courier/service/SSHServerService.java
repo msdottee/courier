@@ -24,6 +24,9 @@ public class SSHServerService {
     @Autowired
     private S3FileSystemFactory s3FileSystemFactory;
 
+    @Autowired
+    private S3SFTPSubsystemFactory s3SFTPSubsystemFactory;
+
     @PostConstruct
     public void initializeSshServer() throws IOException {
         SshServer sshd = SshServer.setUpDefaultServer();
@@ -32,12 +35,8 @@ public class SSHServerService {
         sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
         sshd.setPublickeyAuthenticator(publicKeyAuthenticatorService);
         sshd.setFileSystemFactory(s3FileSystemFactory);
-        sshd.setSubsystemFactories(Collections.singletonList(createFileSystemFactory()));
+        sshd.setSubsystemFactories(Collections.singletonList(s3SFTPSubsystemFactory));
 
         sshd.start();
-    }
-
-    private SubsystemFactory createFileSystemFactory() {
-        return new SftpSubsystemFactory.Builder().build();
     }
 }

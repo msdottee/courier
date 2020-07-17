@@ -7,6 +7,16 @@ import java.net.URI;
 import java.nio.file.*;
 
 public class S3Path implements Path {
+
+    private final FileSystem fileSystem;
+
+    private final String path;
+
+    public S3Path(FileSystem fileSystem, String path) {
+        this.fileSystem = fileSystem;
+        this.path = path;
+    }
+
     /**
      * Returns the file system that created this object.
      *
@@ -14,7 +24,7 @@ public class S3Path implements Path {
      */
     @Override
     public FileSystem getFileSystem() {
-        return null;
+        return fileSystem;
     }
 
     /**
@@ -27,7 +37,7 @@ public class S3Path implements Path {
      */
     @Override
     public boolean isAbsolute() {
-        return false;
+        return path.startsWith(getFileSystem().getSeparator());
     }
 
     /**
@@ -39,7 +49,9 @@ public class S3Path implements Path {
      */
     @Override
     public Path getRoot() {
-        return null;
+        return path.startsWith(getFileSystem().getSeparator()) ?
+                new S3Path(getFileSystem(), getFileSystem().getSeparator()) :
+                null;
     }
 
     /**
@@ -52,7 +64,12 @@ public class S3Path implements Path {
      */
     @Override
     public Path getFileName() {
-        return null;
+        if (path.equals(getFileSystem().getSeparator())) {
+            return null;
+        }
+
+        String[] pathPieces = path.split(getFileSystem().getSeparator());
+        return new S3Path(fileSystem, pathPieces[pathPieces.length - 1]);
     }
 
     /**
@@ -80,6 +97,12 @@ public class S3Path implements Path {
      */
     @Override
     public Path getParent() {
+        String[] pathPieces = path.split(getFileSystem().getSeparator());
+
+        if (pathPieces.length == 1) {
+            return new S3Path(getFileSystem(), getFileSystem().getSeparator());
+        }
+
         return null;
     }
 
@@ -91,7 +114,7 @@ public class S3Path implements Path {
      */
     @Override
     public int getNameCount() {
-        return 0;
+        return path.split(getFileSystem().getSeparator()).length;
     }
 
     /**
@@ -110,7 +133,21 @@ public class S3Path implements Path {
      */
     @Override
     public Path getName(int index) {
-        return null;
+        String[] pathPieces = path.split(getFileSystem().getSeparator());
+
+        if (index < 0) {
+            throw new IllegalArgumentException("Index is negative.");
+        }
+
+        if (index > pathPieces.length - 1) {
+            throw new IllegalArgumentException("Index is greater than the number of path elements.");
+        }
+
+        if (path.equals(getFileSystem().getSeparator())) {
+            throw new IllegalArgumentException("Path has zero elements.");
+        }
+
+        return new S3Path(getFileSystem(), pathPieces[index]);
     }
 
     /**
@@ -135,7 +172,43 @@ public class S3Path implements Path {
      */
     @Override
     public Path subpath(int beginIndex, int endIndex) {
-        return null;
+        String[] pathPieces = path.split(getFileSystem().getSeparator());
+
+        if (beginIndex < 0) {
+            throw new IllegalArgumentException("Begin index is negative.");
+        }
+
+        if (endIndex < 0) {
+            throw new IllegalArgumentException("End index is negative");
+        }
+
+        if (beginIndex > pathPieces.length - 1) {
+            throw new IllegalArgumentException("Begin index is greater than the number of path elements.");
+        }
+
+        if (endIndex > pathPieces.length - 1) {
+            throw new IllegalArgumentException("End index is greater than the number of path elements.");
+        }
+
+        if (beginIndex > endIndex) {
+            throw new IllegalArgumentException("Begin index is greater than the end index.");
+        }
+
+        if (path.equals(getFileSystem().getSeparator())) {
+            throw new IllegalArgumentException("Path has zero elements.");
+        }
+
+        StringBuilder subpath = new StringBuilder();
+
+        for (int i = beginIndex; i < endIndex; i++) {
+            subpath.append(pathPieces[i]);
+
+            if (i < endIndex - 1) {
+                subpath.append(getFileSystem().getSeparator());
+            }
+        }
+
+        return new S3Path(getFileSystem(), subpath.toString());
     }
 
     /**
@@ -161,7 +234,7 @@ public class S3Path implements Path {
      */
     @Override
     public boolean startsWith(Path other) {
-        return false;
+        return path.startsWith(other.toString());
     }
 
     /**
@@ -189,7 +262,7 @@ public class S3Path implements Path {
      */
     @Override
     public boolean endsWith(Path other) {
-        return false;
+        return path.endsWith(other.toString());
     }
 
     /**
@@ -218,7 +291,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path normalize() {
-        return null;
+        return this;
     }
 
     /**
@@ -241,7 +314,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path resolve(Path other) {
-        return null;
+        return this;
     }
 
     /**
@@ -358,7 +431,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path toAbsolutePath() {
-        return null;
+        return this;
     }
 
     /**
@@ -454,7 +527,7 @@ public class S3Path implements Path {
      */
     @Override
     public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
-        return null;
+        throw new UnsupportedOperationException("File watching is not supported by S3 paths.");
     }
 
     /**
@@ -475,6 +548,7 @@ public class S3Path implements Path {
      */
     @Override
     public int compareTo(Path other) {
-        return 0;
+        S3Path otherS3 = (S3Path) other;
+        return path.compareTo(otherS3.toString());
     }
 }

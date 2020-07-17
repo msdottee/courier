@@ -6,8 +6,10 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -183,7 +185,10 @@ public class S3FileSystem extends FileSystem {
      */
     @Override
     public Set<String> supportedFileAttributeViews() {
-        return null;
+        return new HashSet<>() {{
+            add("basic");
+            add("posix");
+        }};
     }
 
     /**
@@ -233,7 +238,15 @@ public class S3FileSystem extends FileSystem {
      */
     @Override
     public Path getPath(String first, String... more) {
-        return null;
+        StringBuilder pathBuilder = new StringBuilder();
+        pathBuilder.append(first);
+
+        for (String additional : more ) {
+            pathBuilder.append(getSeparator());
+            pathBuilder.append(additional);
+        }
+
+        return new S3Path(this, pathBuilder.toString());
     }
 
     /**
@@ -408,6 +421,6 @@ public class S3FileSystem extends FileSystem {
      */
     @Override
     public WatchService newWatchService() throws IOException {
-        return null;
+        throw new UnsupportedOperationException("S3 does not support file watching.");
     }
 }
