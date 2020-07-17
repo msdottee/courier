@@ -9,6 +9,10 @@ import java.util.Objects;
 
 public class S3Path implements Path {
 
+    private static final String ROOT = "/";
+
+    private static final char SEPARATOR = '/';
+
     private final FileSystem fileSystem;
 
     private final String path;
@@ -38,7 +42,7 @@ public class S3Path implements Path {
      */
     @Override
     public boolean isAbsolute() {
-        return path.startsWith(getFileSystem().getSeparator());
+        return path.startsWith(ROOT);
     }
 
     /**
@@ -50,9 +54,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path getRoot() {
-        return path.startsWith(getFileSystem().getSeparator()) ?
-                new S3Path(getFileSystem(), getFileSystem().getSeparator()) :
-                null;
+        return path.startsWith(ROOT) ? new S3Path(getFileSystem(), ROOT) : null;
     }
 
     /**
@@ -65,12 +67,13 @@ public class S3Path implements Path {
      */
     @Override
     public Path getFileName() {
-        if (path.equals(getFileSystem().getSeparator())) {
+        if (path.equals(ROOT)) {
             return null;
         }
 
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
-        return new S3Path(fileSystem, pathPieces[pathPieces.length - 1]);
+        int offset = path.lastIndexOf(SEPARATOR);
+
+        return new S3Path(fileSystem, path.substring(offset + 1));
     }
 
     /**
@@ -98,13 +101,21 @@ public class S3Path implements Path {
      */
     @Override
     public Path getParent() {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
-
-        if (pathPieces.length == 1) {
-            return new S3Path(getFileSystem(), getFileSystem().getSeparator());
+        if (path.equals(ROOT)) {
+            return null;
         }
 
-        return null;
+        int offset = path.lastIndexOf(SEPARATOR);
+
+        if (offset == -1) {
+            return null;
+        }
+
+        if (offset == 0) {
+            return new S3Path(fileSystem, ROOT);
+        }
+
+        return new S3Path(fileSystem, path.substring(0, offset));
     }
 
     /**
@@ -115,7 +126,7 @@ public class S3Path implements Path {
      */
     @Override
     public int getNameCount() {
-        return path.split(getFileSystem().getSeparator()).length;
+        return 0;
     }
 
     /**
@@ -565,5 +576,12 @@ public class S3Path implements Path {
     @Override
     public int hashCode() {
         return Objects.hash(fileSystem, path);
+    }
+
+    @Override
+    public String toString() {
+        return "S3Path{" +
+                "path='" + path + '\'' +
+                '}' ;
     }
 }

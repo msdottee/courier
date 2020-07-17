@@ -78,6 +78,48 @@ public class S3PathTest {
         assertThat(path.getFileName()).isEqualTo(S3_FILE_SYSTEM.getPath("c"));
     }
 
+    @Test
+    public void ensureGetParentReturnsParentForAbsolutePath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.getParent()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b"));
+    }
+
+    @Test
+    public void ensureGetParentReturnsParentForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.getParent()).isEqualTo(S3_FILE_SYSTEM.getPath("a/b"));
+    }
+
+    @Test
+    public void ensureGetParentTreatsSpecialNamesAsNormalNames() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/../c");
+
+        assertThat(path.getParent()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/.."));
+    }
+
+    @Test
+    public void ensureGetParentReturnsRootForFileInRootDirectory() {
+        Path path = S3_FILE_SYSTEM.getPath("/a");
+
+        assertThat(path.getParent()).isEqualTo(S3_FILE_SYSTEM.getPath("/"));
+    }
+
+    @Test
+    public void ensureGetParentReturnsNullForRootDirectory() {
+        Path path = S3_FILE_SYSTEM.getPath("/");
+
+        assertThat(path.getParent()).isNull();
+    }
+
+    @Test
+    public void ensureGetParentReturnsNullForRelativePathWithNoParent() {
+        Path path = S3_FILE_SYSTEM.getPath("a");
+
+        assertThat(path.getParent()).isNull();
+    }
+
     /**
      * Returns the <em>parent path</em>, or {@code null} if this path does not
      * have a parent.
