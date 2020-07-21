@@ -5,6 +5,8 @@ import java.io.IOError;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class S3Path implements Path {
@@ -17,9 +19,30 @@ public class S3Path implements Path {
 
     private final String path;
 
+    private final Integer[] offsets;
+
     public S3Path(FileSystem fileSystem, String path) {
         this.fileSystem = fileSystem;
         this.path = path;
+        this.offsets = getPathComponents(path).toArray(new Integer[] {});
+    }
+
+    private List<Integer> getPathComponents(String path) {
+        List<Integer> currentOffsets = new ArrayList<>();
+
+        if (path.equals(ROOT)) {
+            return currentOffsets;
+        }
+
+        for (int i = 0; i < path.length(); i++) {
+            char currentChar = path.charAt(i);
+
+            if (currentChar == SEPARATOR && i < path.length() - 1) {
+                currentOffsets.add(i);
+            }
+        }
+
+        return currentOffsets;
     }
 
     /**
@@ -67,13 +90,13 @@ public class S3Path implements Path {
      */
     @Override
     public Path getFileName() {
-        if (path.equals(ROOT)) {
+        if (offsets.length == 0) {
             return null;
         }
 
-        int offset = path.lastIndexOf(SEPARATOR);
+        String fileName = path.substring(offsets[offsets.length - 1] + 1);
 
-        return new S3Path(fileSystem, path.substring(offset + 1));
+        return new S3Path(fileSystem, fileName);
     }
 
     /**
@@ -115,7 +138,7 @@ public class S3Path implements Path {
             return new S3Path(fileSystem, ROOT);
         }
 
-        return new S3Path(fileSystem, path.substring(0, offset));
+        return new S3Path(fileSystem, path.substring(0, offsets[offsets.length - 1]));
     }
 
     /**
@@ -126,7 +149,7 @@ public class S3Path implements Path {
      */
     @Override
     public int getNameCount() {
-        return 0;
+        return isAbsolute() ? offsets.length : offsets.length + 1;
     }
 
     /**
@@ -145,21 +168,24 @@ public class S3Path implements Path {
      */
     @Override
     public Path getName(int index) {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
+        if (offsets.length == 0) {
+            throw new IllegalArgumentException("Path has zero elements.");
+        }
 
         if (index < 0) {
             throw new IllegalArgumentException("Index is negative.");
         }
 
-        if (index > pathPieces.length - 1) {
+        if (index >= offsets.length) {
             throw new IllegalArgumentException("Index is greater than the number of path elements.");
         }
 
-        if (path.equals(getFileSystem().getSeparator())) {
-            throw new IllegalArgumentException("Path has zero elements.");
-        }
+        int startIndex = offsets[index] + 1;
+        int endIndex = index == offsets.length - 1 ? path.length() : offsets[index + 1];
 
-        return new S3Path(getFileSystem(), pathPieces[index]);
+        String name = path.substring(startIndex, endIndex);
+
+        return new S3Path(getFileSystem(), name);
     }
 
     /**
