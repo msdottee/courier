@@ -1,6 +1,7 @@
 package io.github.msdottee.courier.service;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.json.AutoConfigureJsonTesters;
 
 import java.io.File;
 import java.io.IOError;
@@ -9,6 +10,7 @@ import java.net.URI;
 import java.nio.file.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 public class S3PathTest {
 
@@ -114,53 +116,60 @@ public class S3PathTest {
     }
 
     @Test
+    public void ensureGetParentReturnsNullForEmptyPath() {
+        Path path = S3_FILE_SYSTEM.getPath("");
+
+        assertThat(path.getParent()).isNull();
+    }
+
+    @Test
     public void ensureGetParentReturnsNullForRelativePathWithNoParent() {
         Path path = S3_FILE_SYSTEM.getPath("a");
 
         assertThat(path.getParent()).isNull();
     }
 
-    /**
-     * Returns the <em>parent path</em>, or {@code null} if this path does not
-     * have a parent.
-     *
-     * <p> The parent of this path object consists of this path's root
-     * component, if any, and each element in the path except for the
-     * <em>farthest</em> from the root in the directory hierarchy. This method
-     * does not access the file system; the path or its parent may not exist.
-     * Furthermore, this method does not eliminate special names such as "."
-     * and ".." that may be used in some implementations. On UNIX for example,
-     * the parent of "{@code /a/b/c}" is "{@code /a/b}", and the parent of
-     * {@code "x/y/.}" is "{@code x/y}". This method may be used with the {@link
-     * #normalize normalize} method, to eliminate redundant names, for cases where
-     * <em>shell-like</em> navigation is required.
-     *
-     * <p> If this path has more than one element, and no root component, then
-     * this method is equivalent to evaluating the expression:
-     * <blockquote><pre>
-     * subpath(0,&nbsp;getNameCount()-1);
-     * </pre></blockquote>
-     *
-     * @return a path representing the path's parent
-     *
-     *     @Override
-     *     public Path getParent() {
-     *
-     *     }
-     */
+    @Test
+    public void ensureGetNameCountReturnsZeroForRootPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/");
 
+        assertThat(path.getNameCount()).isEqualTo(0);
+    }
 
-    /**
-     * Returns the number of name elements in the path.
-     *
-     * @return the number of elements in the path, or {@code 0} if this path
-     * only represents a root component
-     *
-     *     @Override
-     *     public int getNameCount() {
-     *
-     *     }
-     */
+    @Test
+    public void ensureGetNameCountReturnsOneForEmptyPath() {
+        Path path = S3_FILE_SYSTEM.getPath("");
+
+        assertThat(path.getNameCount()).isEqualTo(1);
+    }
+
+    @Test
+    public void ensureGetNameCountReturnsNumberOfNameElementsForAbsolutePath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.getNameCount()).isEqualTo(3);
+    }
+
+    @Test
+    public void ensureGetNameCountReturnsNumberOfNameElementsForAbsolutePathWithTrailingSeparator() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c/");
+
+        assertThat(path.getNameCount()).isEqualTo(3);
+    }
+
+    @Test
+    public void ensureGetNameCountReturnsNumberOfNameElementsForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.getNameCount()).isEqualTo(3);
+    }
+
+    @Test
+    public void ensureGetNameCountReturnsNumberOfNameElementsForRelativePathWithTrailingSeparator() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c/");
+
+        assertThat(path.getNameCount()).isEqualTo(3);
+    }
 
     /**
      * Returns a name element of this path as a {@code Path} object.
@@ -182,6 +191,50 @@ public class S3PathTest {
      *     }
      */
 
+    @Test
+    public void ensureGetNameReturnsNameElementOfSpecificIndex() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.getName(1)).isEqualTo(new S3Path(S3_FILE_SYSTEM, "b"));
+    }
+
+    @Test
+    public void ensureGetNameReturnsTheClosestNameElementToRoot() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.getName(0)).isEqualTo(new S3Path(S3_FILE_SYSTEM, "a"));
+    }
+
+    @Test
+    public void ensureGetNameReturnsTheFarthestNameElementFromRoot() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.getName(2)).isEqualTo(new S3Path(S3_FILE_SYSTEM, "c"));
+    }
+
+    @Test
+    public void ensureGetNameThrowsExceptionOnNegativeIndex() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a");
+            path.getName(-1);
+        });
+    }
+
+    @Test
+    public void ensureGetNameThrowsExceptionOnIndexOutOfBounds() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a");
+            path.getName(1);
+        });
+    }
+
+    @Test
+    public void ensureGetNameThrowsExceptionOnZeroElements() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/");
+            path.getName(0);
+        });
+    }
 
     /**
      * Returns a relative {@code Path} that is a subsequence of the name

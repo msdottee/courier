@@ -5,6 +5,8 @@ import java.io.IOError;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class S3Path implements Path {
@@ -17,9 +19,51 @@ public class S3Path implements Path {
 
     private final String path;
 
+    private final List<String> pathComponents;
+
     public S3Path(FileSystem fileSystem, String path) {
         this.fileSystem = fileSystem;
         this.path = path;
+        this.pathComponents = getPathComponents(path);
+    }
+
+    private List<String> getPathComponents(String path) {
+        // TODO: Use offsets like in WindowsPath. It is more flexible and efficient.
+
+        List<String> pathComponents = new ArrayList<>();
+
+        if (path.equals(ROOT)) {
+            return pathComponents;
+        }
+
+        if (path.length() == 0) {
+            pathComponents.add("");
+            return pathComponents;
+        }
+
+        StringBuilder currentComponent = new StringBuilder();
+        int currentComponentLength = 0;
+        char lastChar = SEPARATOR;
+
+        for (int i = 0; i < path.length(); i++) {
+            char currentChar = path.charAt(i);
+
+            if (currentChar == SEPARATOR && currentComponentLength > 0) {
+                pathComponents.add(currentComponent.toString());
+                currentComponent = new StringBuilder();
+            } else if (currentChar != SEPARATOR) {
+                currentComponent.append(currentChar);
+                currentComponentLength++;
+            }
+
+            lastChar = currentChar;
+        }
+
+        if (lastChar != SEPARATOR) {
+            pathComponents.add(currentComponent.toString());
+        }
+
+        return pathComponents;
     }
 
     /**
@@ -67,13 +111,11 @@ public class S3Path implements Path {
      */
     @Override
     public Path getFileName() {
-        if (path.equals(ROOT)) {
+        if (pathComponents.size() == 0) {
             return null;
         }
 
-        int offset = path.lastIndexOf(SEPARATOR);
-
-        return new S3Path(fileSystem, path.substring(offset + 1));
+        return new S3Path(fileSystem, pathComponents.get(pathComponents.size() - 1));
     }
 
     /**
@@ -126,7 +168,11 @@ public class S3Path implements Path {
      */
     @Override
     public int getNameCount() {
-        return 0;
+        if (path.equals(ROOT)) {
+            return 0;
+        }
+
+        return pathComponents.size();
     }
 
     /**
@@ -145,21 +191,19 @@ public class S3Path implements Path {
      */
     @Override
     public Path getName(int index) {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
+        if (pathComponents.size() == 0) {
+            throw new IllegalArgumentException("Path has zero elements.");
+        }
 
         if (index < 0) {
             throw new IllegalArgumentException("Index is negative.");
         }
 
-        if (index > pathPieces.length - 1) {
+        if (index >= pathComponents.size()) {
             throw new IllegalArgumentException("Index is greater than the number of path elements.");
         }
 
-        if (path.equals(getFileSystem().getSeparator())) {
-            throw new IllegalArgumentException("Path has zero elements.");
-        }
-
-        return new S3Path(getFileSystem(), pathPieces[index]);
+        return new S3Path(getFileSystem(), pathComponents.get(index));
     }
 
     /**
