@@ -19,51 +19,30 @@ public class S3Path implements Path {
 
     private final String path;
 
-    private final List<String> pathComponents;
+    private final Integer[] offsets;
 
     public S3Path(FileSystem fileSystem, String path) {
         this.fileSystem = fileSystem;
         this.path = path;
-        this.pathComponents = getPathComponents(path);
+        this.offsets = getPathComponents(path).toArray(new Integer[] {});
     }
 
-    private List<String> getPathComponents(String path) {
-        // TODO: Use offsets like in WindowsPath. It is more flexible and efficient.
-
-        List<String> pathComponents = new ArrayList<>();
+    private List<Integer> getPathComponents(String path) {
+        List<Integer> currentOffsets = new ArrayList<>();
 
         if (path.equals(ROOT)) {
-            return pathComponents;
+            return currentOffsets;
         }
-
-        if (path.length() == 0) {
-            pathComponents.add("");
-            return pathComponents;
-        }
-
-        StringBuilder currentComponent = new StringBuilder();
-        int currentComponentLength = 0;
-        char lastChar = SEPARATOR;
 
         for (int i = 0; i < path.length(); i++) {
             char currentChar = path.charAt(i);
 
-            if (currentChar == SEPARATOR && currentComponentLength > 0) {
-                pathComponents.add(currentComponent.toString());
-                currentComponent = new StringBuilder();
-            } else if (currentChar != SEPARATOR) {
-                currentComponent.append(currentChar);
-                currentComponentLength++;
+            if (currentChar == SEPARATOR && i < path.length() - 1) {
+                currentOffsets.add(i);
             }
-
-            lastChar = currentChar;
         }
 
-        if (lastChar != SEPARATOR) {
-            pathComponents.add(currentComponent.toString());
-        }
-
-        return pathComponents;
+        return currentOffsets;
     }
 
     /**
@@ -111,11 +90,13 @@ public class S3Path implements Path {
      */
     @Override
     public Path getFileName() {
-        if (pathComponents.size() == 0) {
+        if (offsets.length == 0) {
             return null;
         }
 
-        return new S3Path(fileSystem, pathComponents.get(pathComponents.size() - 1));
+        String fileName = path.substring(offsets[offsets.length - 1] + 1);
+
+        return new S3Path(fileSystem, fileName);
     }
 
     /**
@@ -157,7 +138,7 @@ public class S3Path implements Path {
             return new S3Path(fileSystem, ROOT);
         }
 
-        return new S3Path(fileSystem, path.substring(0, offset));
+        return new S3Path(fileSystem, path.substring(0, offsets[offsets.length - 1]));
     }
 
     /**
@@ -168,11 +149,7 @@ public class S3Path implements Path {
      */
     @Override
     public int getNameCount() {
-        if (path.equals(ROOT)) {
-            return 0;
-        }
-
-        return pathComponents.size();
+        return isAbsolute() ? offsets.length : offsets.length + 1;
     }
 
     /**
@@ -191,7 +168,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path getName(int index) {
-        if (pathComponents.size() == 0) {
+        if (offsets.length == 0) {
             throw new IllegalArgumentException("Path has zero elements.");
         }
 
@@ -199,11 +176,16 @@ public class S3Path implements Path {
             throw new IllegalArgumentException("Index is negative.");
         }
 
-        if (index >= pathComponents.size()) {
+        if (index >= offsets.length) {
             throw new IllegalArgumentException("Index is greater than the number of path elements.");
         }
 
-        return new S3Path(getFileSystem(), pathComponents.get(index));
+        int startIndex = offsets[index] + 1;
+        int endIndex = index == offsets.length - 1 ? path.length() : offsets[index + 1];
+
+        String name = path.substring(startIndex, endIndex);
+
+        return new S3Path(getFileSystem(), name);
     }
 
     /**
