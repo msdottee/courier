@@ -1,7 +1,6 @@
 package io.github.msdottee.courier.service;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.json.AutoConfigureJsonTesters;
 
 import java.io.File;
 import java.io.IOError;
@@ -213,6 +212,13 @@ public class S3PathTest {
     }
 
     @Test
+    public void ensureGetNameReturnsRightMostElementForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.getName(2)).isEqualTo(new S3Path(S3_FILE_SYSTEM, "c"));
+    }
+
+    @Test
     public void ensureGetNameThrowsExceptionOnNegativeIndex() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/a");
@@ -262,6 +268,61 @@ public class S3PathTest {
      *     }
      */
 
+    @Test
+    public void ensureSubpathReturnsTheRelativePathFromSpecificBeginAndEndIndicies() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c/d");
+
+        assertThat(path.subpath(1, 4)).isEqualTo(new S3Path(S3_FILE_SYSTEM, "b/c/d"));
+    }
+
+    @Test
+    public void ensureSubpathThrowsExceptionOnNegativeBeginIndex() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a");
+            path.subpath(-1, 1);
+        });
+    }
+
+    @Test
+    public void ensureSubpathThrowsExceptionOnNegativeEndIndex() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a");
+            path.subpath(0, -1);
+        });
+    }
+
+    @Test
+    public void ensureSubpathThrowsExceptionOnIndexOutOfBoundsForBeginIndex() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a");
+            path.subpath(1, 2);
+        });
+    }
+
+    @Test
+    public void ensureSubpathThrowsExceptionOnIndexOutOfBoundsForEndIndexGreaterThanNumberOfNameElements() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a");
+            path.subpath(0, 2);
+        });
+    }
+
+    @Test
+    public void ensureSubpathThrowsExceptionOnIndexOutOfBoundsForEndIndexLessThanBeginIndex() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+            path.subpath(2, 1);
+        });
+    }
+
+    @Test
+    public void ensureSubpathThrowsExceptionOnZeroElements() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/");
+            path.subpath(0, 1);
+        });
+    }
+
 
     /**
      * Tests if this path starts with the given path.
@@ -289,6 +350,27 @@ public class S3PathTest {
      *         return path.startsWith(other.toString());
      *     }
      */
+
+    @Test
+    public void ensureStartsWithReturnsTrueForSameRootAndNameElements() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.startsWith("/a/b/c")).isTrue();
+    }
+
+    @Test
+    public void ensureStartsWithReturnsFalseIfNumberOfNameElementsDiffer() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.startsWith("/a/b/c")).isFalse();
+    }
+
+    @Test
+    public void ensureStartsWithReturnsFalseIfPathRootDoesNotMatch() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.startsWith("a/b/c")).isFalse();
+    }
 
 
     /**
@@ -319,6 +401,20 @@ public class S3PathTest {
      *         return path.endsWith(other.toString());
      *     }
      */
+
+    @Test
+    public void ensureEndsWithReturnsTrueForSameRootAndNameElements() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.endsWith("/a/b/c")).isTrue();
+    }
+
+    @Test
+    public void ensureEndsWithReturnsFalseIfPathRootDoesNotMatch() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.endsWith("a/b/c")).isFalse();
+    }
 
 
     /**
@@ -351,6 +447,42 @@ public class S3PathTest {
      *     }
      */
 
+    @Test
+    public void ensureNormalizeReturnsThePathGivenIfThereAreNoRedundantNameElements() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.normalize()).isEqualTo("/a/b/c");
+    }
+
+    @Test
+    public void ensureNormalizeReturnsAPathWithAllSinglePeriodNameElementsRemoved() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/.");
+
+        assertThat(path.normalize()).isEqualTo("/a/b");
+    }
+
+    @Test
+    public void ensureNormalizeReturnsAPathWithAllDoublePeriodNameElementsRemoved() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/..");
+
+        assertThat(path.normalize()).isEqualTo("/a");
+    }
+
+    @Test
+    public void ensureNormalizeReturnsAnEmptyPathForARelativePathWithAllRedundantNameElements() {
+        Path path = S3_FILE_SYSTEM.getPath("../././.");
+
+        assertThat(path.normalize()).isEqualTo("");
+    }
+
+    //TODO find out what the actual outcome of an empty path is
+    @Test
+    public void ensureNormalizeReturnsNullForEmptyPath() {
+        Path path = S3_FILE_SYSTEM.getPath("");
+
+        assertThat(path.normalize()).isNull();
+    }
+
 
     /**
      * Resolve the given path against this path.
@@ -375,6 +507,31 @@ public class S3PathTest {
      *         return this;
      *     }
      */
+
+    @Test
+    public void ensureResolveReturnsResultingPathForAbsolutePath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+        String other = "d";
+
+        assertThat(path.resolve(other)).isEqualTo("/a/b/c/d");
+    }
+
+    @Test
+    public void ensureResolveReturnsPathIfOtherIsAnEmptyPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+        String other = "";
+
+        assertThat(path.resolve(other)).isEqualTo("/a/b/c");
+    }
+
+    @Test
+    public void ensureResolveThrowsExceptionWhenOtherIsAnAbsolutePath() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+            String other = "/d";
+            path.resolve(other);
+        });
+    }
 
     /**
      * Constructs a relative path between this path and a given path.
@@ -417,6 +574,14 @@ public class S3PathTest {
      *         return null;
      *     }
      */
+
+    @Test
+    public void ensureRelativizeReturnsAnEmptyPathForTheSamePath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+        Path other = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.relativize(other)).isEqualTo("");
+    }
 
     /**
      * Returns a URI to represent this path.
@@ -492,6 +657,28 @@ public class S3PathTest {
      *         return this;
      *     }
      */
+
+    @Test
+    public void ensureToAbsolutePathReturnsRootPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.toAbsolutePath()).isEqualTo("/a/b/c");
+    }
+
+    @Test
+    public void ensureToAbsolutePathReturnsRootPathIfGivenPathIsRelative() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.toAbsolutePath()).isEqualTo("/a/b/c");
+    }
+
+    @Test
+    public void ensureToAbsolutePathThrowsIOExceptionForEmptyPath() {
+        assertThatExceptionOfType(IOError.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("");
+            path.toAbsolutePath();
+        });
+    }
 
 
     /**

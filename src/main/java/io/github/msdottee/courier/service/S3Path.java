@@ -1,5 +1,6 @@
 package io.github.msdottee.courier.service;
 
+import javax.swing.*;
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
@@ -19,30 +20,73 @@ public class S3Path implements Path {
 
     private final String path;
 
-    private final Integer[] offsets;
+    private final Integer[] componentStartOffsets;
+
+    private final Integer[] componentEndOffsets;
 
     public S3Path(FileSystem fileSystem, String path) {
         this.fileSystem = fileSystem;
         this.path = path;
-        this.offsets = getPathComponents(path).toArray(new Integer[] {});
+        this.componentStartOffsets = getComponentStartOffsets().toArray(new Integer[] {});
+        this.componentEndOffsets = getComponentEndOffsets().toArray(new Integer[] {});
     }
 
-    private List<Integer> getPathComponents(String path) {
-        List<Integer> currentOffsets = new ArrayList<>();
+    private List<Integer> getComponentStartOffsets() {
+        List<Integer> offsets = new ArrayList<>();
 
-        if (path.equals(ROOT)) {
-            return currentOffsets;
+        if (path.equals("") || path.equals(ROOT)) {
+            return offsets;
         }
 
-        for (int i = 0; i < path.length(); i++) {
-            char currentChar = path.charAt(i);
+        int startingIndex;
 
-            if (currentChar == SEPARATOR && i < path.length() - 1) {
-                currentOffsets.add(i);
+        if (isAbsolute()) {
+            startingIndex = ROOT.length();
+        } else {
+            startingIndex = 0;
+        }
+
+        offsets.add(startingIndex);
+
+        for (int i = startingIndex + 1; i < path.length(); i++) {
+            char lastChar = path.charAt(i - 1);
+            if (lastChar == SEPARATOR) {
+                offsets.add(i);
             }
         }
 
-        return currentOffsets;
+        return offsets;
+    }
+
+    private List<Integer> getComponentEndOffsets() {
+        List<Integer> offsets = new ArrayList<>();
+
+        if (path.equals("") || path.equals(ROOT)) {
+            return offsets;
+        }
+
+        int startingIndex;
+
+        if (isAbsolute()) {
+            startingIndex = ROOT.length();
+        } else {
+            startingIndex = 0;
+        }
+
+        for (int i = startingIndex; i < path.length() - 1; i++) {
+            char nextChar = path.charAt(i + 1);
+            if (nextChar == SEPARATOR) {
+                offsets.add(i);
+            }
+        }
+
+        int lastCharIndex = path.length() - 1;
+
+        if (path.charAt(lastCharIndex) != SEPARATOR) {
+           offsets.add(lastCharIndex);
+        }
+
+        return offsets;
     }
 
     /**
@@ -90,11 +134,11 @@ public class S3Path implements Path {
      */
     @Override
     public Path getFileName() {
-        if (offsets.length == 0) {
+        if (componentStartOffsets.length == 0) {
             return null;
         }
 
-        String fileName = path.substring(offsets[offsets.length - 1] + 1);
+        String fileName = path.substring(componentStartOffsets[componentStartOffsets.length - 1]);
 
         return new S3Path(fileSystem, fileName);
     }
@@ -124,21 +168,15 @@ public class S3Path implements Path {
      */
     @Override
     public Path getParent() {
-        if (path.equals(ROOT)) {
-            return null;
-        }
-
-        int offset = path.lastIndexOf(SEPARATOR);
-
-        if (offset == -1) {
-            return null;
-        }
-
-        if (offset == 0) {
+        if (componentStartOffsets.length == 1 && isAbsolute()) {
             return new S3Path(fileSystem, ROOT);
         }
 
-        return new S3Path(fileSystem, path.substring(0, offsets[offsets.length - 1]));
+        if (componentStartOffsets.length < 2) {
+            return null;
+        }
+
+        return new S3Path(fileSystem, path.substring(0, componentEndOffsets[componentEndOffsets.length - 2] + 1));
     }
 
     /**
@@ -149,7 +187,11 @@ public class S3Path implements Path {
      */
     @Override
     public int getNameCount() {
-        return isAbsolute() ? offsets.length : offsets.length + 1;
+        if (path.length() == 0) {
+            return 1;
+        }
+        
+        return componentStartOffsets.length;
     }
 
     /**
@@ -168,7 +210,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path getName(int index) {
-        if (offsets.length == 0) {
+        if (componentStartOffsets.length == 0) {
             throw new IllegalArgumentException("Path has zero elements.");
         }
 
@@ -176,14 +218,11 @@ public class S3Path implements Path {
             throw new IllegalArgumentException("Index is negative.");
         }
 
-        if (index >= offsets.length) {
+        if (index >= componentStartOffsets.length) {
             throw new IllegalArgumentException("Index is greater than the number of path elements.");
         }
 
-        int startIndex = offsets[index] + 1;
-        int endIndex = index == offsets.length - 1 ? path.length() : offsets[index + 1];
-
-        String name = path.substring(startIndex, endIndex);
+        String name = path.substring(componentStartOffsets[index], componentEndOffsets[index] + 1);
 
         return new S3Path(getFileSystem(), name);
     }
@@ -210,8 +249,6 @@ public class S3Path implements Path {
      */
     @Override
     public Path subpath(int beginIndex, int endIndex) {
-        String[] pathPieces = path.split(getFileSystem().getSeparator());
-
         if (beginIndex < 0) {
             throw new IllegalArgumentException("Begin index is negative.");
         }
@@ -220,11 +257,11 @@ public class S3Path implements Path {
             throw new IllegalArgumentException("End index is negative");
         }
 
-        if (beginIndex > pathPieces.length - 1) {
+        if (beginIndex > path.length() - 1) {
             throw new IllegalArgumentException("Begin index is greater than the number of path elements.");
         }
 
-        if (endIndex > pathPieces.length - 1) {
+        if (endIndex > path.length() - 1) {
             throw new IllegalArgumentException("End index is greater than the number of path elements.");
         }
 
@@ -236,17 +273,7 @@ public class S3Path implements Path {
             throw new IllegalArgumentException("Path has zero elements.");
         }
 
-        StringBuilder subpath = new StringBuilder();
-
-        for (int i = beginIndex; i < endIndex; i++) {
-            subpath.append(pathPieces[i]);
-
-            if (i < endIndex - 1) {
-                subpath.append(getFileSystem().getSeparator());
-            }
-        }
-
-        return new S3Path(getFileSystem(), subpath.toString());
+        return new S3Path(getFileSystem(), path.substring(componentStartOffsets[beginIndex], componentEndOffsets[endIndex - 1] + 1));
     }
 
     /**
