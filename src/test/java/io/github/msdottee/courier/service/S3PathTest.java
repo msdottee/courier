@@ -596,9 +596,36 @@ public class S3PathTest {
     @Test
     public void ensureRelativizeReturnsAnEmptyPathForTheSamePath() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
-        Path other = S3_FILE_SYSTEM.getPath("/a/b/c");
 
-        assertThat(path.relativize(other)).isEqualTo("");
+        assertThat(path.relativize(S3_FILE_SYSTEM.getPath("/a/b/c"))).isEqualTo(S3_FILE_SYSTEM.getPath(""));
+    }
+
+    @Test
+    public void ensureRelativizeReturnsARelativePathWhenTheRootIsTheSame() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b");
+
+        assertThat(path.relativize(S3_FILE_SYSTEM.getPath("/a/b/c/d"))).isEqualTo(S3_FILE_SYSTEM.getPath("c/d"));
+    }
+
+    @Test
+    public void ensureRelativizeThrowsIllegalArgumentExceptionWithARootPathAndRelativePath() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("/a/b/c").relativize(S3_FILE_SYSTEM.getPath("b/c"));
+        });
+    }
+
+    @Test
+    public void ensureRelativizeThrowsIllegalArgumentExceptionWhenOtherIsNotS3Path() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("/a/b/c").relativize(Paths.get("/b/c"));
+        });
+    }
+
+    @Test
+    public void ensureRelativizeThrowsNullPointerExceptionWhenOtherIsNull() {
+        assertThatExceptionOfType(NullPointerException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("/a/b/c").relativize((Path) null);
+        });
     }
 
     /**
@@ -690,6 +717,18 @@ public class S3PathTest {
         assertThat(path.toAbsolutePath()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c"));
     }
 
+    //TODO
+    @Test
+    public void ensureToAbsolutPathReturnsSomethingForEmptyPath() {
+
+    }
+
+    //TODO
+    @Test
+    public void ensureToAbsolutePathReturnsSomethingForNullPath() {
+
+    }
+
     /**
      * Returns the <em>real</em> path of an existing file.
      *
@@ -742,6 +781,20 @@ public class S3PathTest {
     }
 
     @Test
+    public void ensureToRealPathReturnsPathWithAllSingleDotElementNamesRemoved() throws IOException {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/./d");
+
+        assertThat(path.toRealPath()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/d"));
+    }
+
+    @Test
+    public void ensureToRealPathReturnsPathWithAllDoubleDoElementsRemoved() throws IOException {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c/../d");
+
+        assertThat(path.toRealPath()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/d"));
+    }
+
+    @Test
     public void ensureRegisterThrowsUnsupportedException() throws IOException {
         assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> {
             S3_FILE_SYSTEM.getPath("/a").register(new WatchService() {
@@ -791,4 +844,32 @@ public class S3PathTest {
      return path.compareTo(otherS3.toString());
      }
      */
+
+    @Test
+    public void ensureCompareToReturnsZeroWhenBothPathsAreEqual() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b/c"))).isEqualTo(0);
+    }
+
+    @Test
+    public void ensureCompareToReturnsANegativeValueForPathLexicographicallyLess() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b");
+
+        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b/c/d"))).isEqualTo(-2);
+    }
+
+    @Test
+    public void ensureCompareToReturnsAPositiveValueForPathLexicographicallyGreater() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c/d");
+
+        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b"))).isEqualTo(2);
+    }
+
+    @Test
+    public void ensureCompareToThrowsNullPointerExceptionWhenOtherIsNull() {
+        assertThatExceptionOfType(NullPointerException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("/a/b/c").compareTo((Path) null);
+        });
+    }
 }

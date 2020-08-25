@@ -497,7 +497,50 @@ public class S3Path implements Path {
      */
     @Override
     public Path relativize(Path other) {
-        return null;
+        if (!isAbsolute()) {
+            throw new IllegalArgumentException("Cannot relativeize a path against a relative path.");
+        }
+
+        if (!other.isAbsolute()) {
+            throw new IllegalArgumentException("Cannot relativize a relative path.");
+        }
+
+        S3Path otherS3Path = getS3Path(other);
+
+        boolean[] skipComponentOffsets = new boolean[otherS3Path.componentStartOffsets.length];
+
+        int i = 0;
+
+        for (; i < otherS3Path.componentStartOffsets.length && i < componentStartOffsets.length; i++) {
+            String thisComponent = getS3Path(getName(i)).path;
+            String otherComponent = getS3Path(otherS3Path.getName(i)).path;
+
+            if (thisComponent.equals(otherComponent)) {
+                skipComponentOffsets[i] = true;
+            } else {
+                break;
+            }
+        }
+
+        for(; i < otherS3Path.componentStartOffsets.length; i++) {
+            skipComponentOffsets[i] = false;
+        }
+
+        StringBuilder relativePath = new StringBuilder();
+        boolean componentAdded = false;
+
+        for (i = 0; i < otherS3Path.componentStartOffsets.length; i++) {
+            if (componentAdded) {
+                relativePath.append(SEPARATOR);
+            }
+
+            if (!skipComponentOffsets[i]) {
+                relativePath.append(getS3Path(otherS3Path.getName(i)).path);
+                componentAdded = true;
+            }
+        }
+
+        return new S3Path(fileSystem, relativePath.toString());
     }
 
     /**
@@ -709,7 +752,7 @@ public class S3Path implements Path {
         if (other instanceof S3Path) {
             return (S3Path) other;
         } else {
-            throw new ProviderMismatchException();
+            throw new IllegalArgumentException("Other path is not an S3 path.");
         }
     }
 
