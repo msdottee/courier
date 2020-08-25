@@ -663,7 +663,7 @@ public class S3Path implements Path {
      */
     @Override
     public Path toRealPath(LinkOption... options) throws IOException {
-        return null;
+        throw new UnsupportedOperationException("Real path conversion is not supported by S3 paths.");
     }
 
     /**
