@@ -305,9 +305,9 @@ public class S3Path implements Path {
             return false;
         }
 
-        S3Path otherS3Path = (S3Path) other;
+        S3Path otherS3Path = getS3Path(other);
 
-        return path.startsWith(otherS3Path.getPathString());
+        return path.startsWith(otherS3Path.path);
     }
 
     /**
@@ -339,9 +339,9 @@ public class S3Path implements Path {
             return false;
         }
 
-        S3Path otherS3Path = (S3Path) other;
+        S3Path otherS3Path = getS3Path(other);
 
-        return path.endsWith(otherS3Path.getPathString());
+        return path.endsWith(otherS3Path.path);
     }
 
     /**
@@ -375,7 +375,7 @@ public class S3Path implements Path {
         int unusedDotDotCount = 0;
 
         for (int i = componentStartOffsets.length - 1; i >= 0; i--) {
-            String component = getS3Path(getName(i)).getPathString();
+            String component = getS3Path(getName(i)).path;
 
             if ("..".equals(component)) {
                 unusedDotDotCount++;
@@ -736,12 +736,8 @@ public class S3Path implements Path {
      */
     @Override
     public int compareTo(Path other) {
-        S3Path otherS3 = (S3Path) other;
-        return path.compareTo(otherS3.toString());
-    }
-
-    String getPathString() {
-        return path;
+        S3Path otherS3 = getS3Path(other);
+        return path.compareTo(otherS3.path);
     }
 
     private S3Path getS3Path(Path other) {

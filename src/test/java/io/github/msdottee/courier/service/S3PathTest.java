@@ -800,14 +800,14 @@ public class S3PathTest {
     public void ensureCompareToReturnsANegativeValueForPathLexicographicallyLess() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b");
 
-        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b/c/d"))).isEqualTo(-2);
+        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b/c/d"))).isLessThan(0);
     }
 
     @Test
     public void ensureCompareToReturnsAPositiveValueForPathLexicographicallyGreater() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c/d");
 
-        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b"))).isEqualTo(2);
+        assertThat(path.compareTo(S3_FILE_SYSTEM.getPath("/a/b"))).isGreaterThan(0);
     }
 
     @Test
