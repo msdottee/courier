@@ -375,7 +375,7 @@ public class S3Path implements Path {
         int unusedDotDotCount = 0;
 
         for (int i = componentStartOffsets.length - 1; i >= 0; i--) {
-            String component = ((S3Path) getName(i)).getPathString();
+            String component = getS3Path(getName(i)).getPathString();
 
             if ("..".equals(component)) {
                 unusedDotDotCount++;
@@ -435,7 +435,27 @@ public class S3Path implements Path {
      */
     @Override
     public Path resolve(Path other) {
-        return this;
+        S3Path otherS3Path = getS3Path(other);
+
+        if (other.isAbsolute()) {
+            return other;
+        }
+
+        if ("".equals(otherS3Path.path)) {
+            return this;
+        }
+
+        StringBuilder resolvedPath = new StringBuilder();
+
+        resolvedPath.append(this.path);
+
+        if (!this.path.endsWith(Character.toString(SEPARATOR))) {
+            resolvedPath.append(SEPARATOR);
+        }
+
+        resolvedPath.append(otherS3Path.path);
+
+        return new S3Path(fileSystem, resolvedPath.toString());
     }
 
     /**
@@ -679,6 +699,18 @@ public class S3Path implements Path {
 
     String getPathString() {
         return path;
+    }
+
+    private S3Path getS3Path(Path other) {
+        if (other == null) {
+            throw new NullPointerException();
+        }
+
+        if (other instanceof S3Path) {
+            return (S3Path) other;
+        } else {
+            throw new ProviderMismatchException();
+        }
     }
 
     @Override

@@ -7,6 +7,7 @@ import java.io.IOError;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.*;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -518,25 +519,35 @@ public class S3PathTest {
     @Test
     public void ensureResolveReturnsResultingPathForAbsolutePath() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
-        String other = "d";
 
-        assertThat(path.resolve(other)).isEqualTo("/a/b/c/d");
+        assertThat(path.resolve(S3_FILE_SYSTEM.getPath("d"))).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c/d"));
     }
 
     @Test
     public void ensureResolveReturnsPathIfOtherIsAnEmptyPath() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
-        String other = "";
 
-        assertThat(path.resolve(other)).isEqualTo("/a/b/c");
+        assertThat(path.resolve(S3_FILE_SYSTEM.getPath(""))).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c"));
     }
 
     @Test
-    public void ensureResolveThrowsExceptionWhenOtherIsAnAbsolutePath() {
+    public void ensureResolveReturnsOtherWhenOtherIsAnAbsolutePath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.resolve(S3_FILE_SYSTEM.getPath("/d"))).isEqualTo(S3_FILE_SYSTEM.getPath("/d"));
+    }
+
+    @Test
+    public void ensureResolveThrowsNullPointerExceptionWhenOtherIsNull() {
+        assertThatExceptionOfType(NullPointerException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("/a/b/c").resolve((Path) null);
+        });
+    }
+
+    @Test
+    public void ensureResolveThrowsIllegalArgumentExceptionWhenOtherIsNotS3Path() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
-            Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
-            String other = "/d";
-            path.resolve(other);
+            S3_FILE_SYSTEM.getPath("/a/b/c").resolve(Paths.get("/"));
         });
     }
 
@@ -669,14 +680,14 @@ public class S3PathTest {
     public void ensureToAbsolutePathReturnsRootPath() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
 
-        assertThat(path.toAbsolutePath()).isEqualTo("/a/b/c");
+        assertThat(path.toAbsolutePath()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c"));
     }
 
     @Test
     public void ensureToAbsolutePathReturnsRootPathIfGivenPathIsRelative() {
         Path path = S3_FILE_SYSTEM.getPath("a/b/c");
 
-        assertThat(path.toAbsolutePath()).isEqualTo("/a/b/c");
+        assertThat(path.toAbsolutePath()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c"));
     }
 
     /**
@@ -727,62 +738,35 @@ public class S3PathTest {
     public void ensureToRealPathReturnsAnAbsolutePathWhenTheGivenPathIsRelative() throws IOException {
         Path path = S3_FILE_SYSTEM.getPath("a/b/c");
 
-        assertThat(path.toRealPath()).isEqualTo("/a/b/c");
+        assertThat(path.toRealPath()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c"));
     }
 
+    @Test
+    public void ensureRegisterThrowsUnsupportedException() throws IOException {
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("/a").register(new WatchService() {
+                @Override
+                public void close() throws IOException {
 
-    /**
-     * Registers the file located by this path with a watch service.
-     *
-     * <p> In this release, this path locates a directory that exists. The
-     * directory is registered with the watch service so that entries in the
-     * directory can be watched. The {@code events} parameter is the events to
-     * register and may contain the following events:
-     * <ul>
-     *   <li>{@link StandardWatchEventKinds#ENTRY_CREATE ENTRY_CREATE} -
-     *       entry created or moved into the directory</li>
-     *   <li>{@link StandardWatchEventKinds#ENTRY_DELETE ENTRY_DELETE} -
-     *        entry deleted or moved out of the directory</li>
-     *   <li>{@link StandardWatchEventKinds#ENTRY_MODIFY ENTRY_MODIFY} -
-     *        entry in directory was modified</li>
-     * </ul>
-     *
-     * <p> The {@link WatchEvent#context context} for these events is the
-     * relative path between the directory located by this path, and the path
-     * that locates the directory entry that is created, deleted, or modified.
-     *
-     * <p> The set of events may include additional implementation specific
-     * event that are not defined by the enum {@link StandardWatchEventKinds}
-     *
-     * <p> The {@code modifiers} parameter specifies <em>modifiers</em> that
-     * qualify how the directory is registered. This release does not define any
-     * <em>standard</em> modifiers. It may contain implementation specific
-     * modifiers.
-     *
-     * <p> Where a file is registered with a watch service by means of a symbolic
-     * link then it is implementation specific if the watch continues to depend
-     * on the existence of the symbolic link after it is registered.
-     *
-     * @param watcher   the watch service to which this object is to be registered
-     * @param events    the events for which this object should be registered
-     * @param modifiers the modifiers, if any, that modify how the object is registered
-     * @return a key representing the registration of this object with the
-     * given watch service
-     * @throws UnsupportedOperationException if unsupported events or modifiers are specified
-     * @throws IllegalArgumentException      if an invalid combination of events or modifiers is specified
-     * @throws ClosedWatchServiceException   if the watch service is closed
-     * @throws NotDirectoryException         if the file is registered to watch the entries in a directory
-     *                                       and the file is not a directory  <i>(optional specific exception)</i>
-     * @throws IOException                   if an I/O error occurs
-     * @throws SecurityException             In the case of the default provider, and a security manager is
-     *                                       installed, the {@link SecurityManager#checkRead(String) checkRead}
-     *                                       method is invoked to check read access to the file.
-     *                                           @Override
-     *     public WatchKey register(WatchService watcher, WatchEvent.Kind<?>[] events, WatchEvent.Modifier... modifiers) throws IOException {
-     *         throw new UnsupportedOperationException("File watching is not supported by S3 paths.");
-     *     }
-     */
+                }
 
+                @Override
+                public WatchKey poll() {
+                    return null;
+                }
+
+                @Override
+                public WatchKey poll(long timeout, TimeUnit unit) throws InterruptedException {
+                    return null;
+                }
+
+                @Override
+                public WatchKey take() throws InterruptedException {
+                    return null;
+                }
+            }, StandardWatchEventKinds.ENTRY_CREATE);
+        });
+    }
 
     /**
      * Compares two abstract paths lexicographically. The ordering defined by
