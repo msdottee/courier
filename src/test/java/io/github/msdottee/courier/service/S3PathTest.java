@@ -170,26 +170,6 @@ public class S3PathTest {
         assertThat(path.getNameCount()).isEqualTo(3);
     }
 
-    /**
-     * Returns a name element of this path as a {@code Path} object.
-     *
-     * <p> The {@code index} parameter is the index of the name element to return.
-     * The element that is <em>closest</em> to the root in the directory hierarchy
-     * has index {@code 0}. The element that is <em>farthest</em> from the root
-     * has index {@link #getNameCount count}{@code -1}.
-     *
-     * @param index the index of the element
-     * @return the name element
-     * @throws IllegalArgumentException if {@code index} is negative, {@code index} is greater than or
-     *                                  equal to the number of elements, or this path has zero name
-     *                                  elements
-     *
-     *                                      @Override
-     *     public Path getName(int index) {
-     *
-     *     }
-     */
-
     @Test
     public void ensureGetNameReturnsNameElementOfSpecificIndex() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
@@ -362,14 +342,28 @@ public class S3PathTest {
     public void ensureStartsWithReturnsFalseIfNumberOfNameElementsDiffer() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
 
-        assertThat(path.startsWith("/a/b/c")).isFalse();
+        assertThat(path.startsWith("/b/c")).isFalse();
     }
 
     @Test
     public void ensureStartsWithReturnsFalseIfPathRootDoesNotMatch() {
         Path path = S3_FILE_SYSTEM.getPath("a/b/c");
 
-        assertThat(path.startsWith("a/b/c")).isFalse();
+        assertThat(path.startsWith("/a/b/c")).isFalse();
+    }
+
+    @Test
+    public void ensureStartsWithReturnsTrueWhenNumberOfNameElementsDifferAndTheStartingNameElementsAreTheSameForRoot() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c/d/e");
+
+        assertThat(path.startsWith("/a/b/c")).isTrue();
+    }
+
+    @Test
+    public void ensureStartsWithReturnsTrueWhenNumberOfNameNameElementsDifferAndTheStartingNameElementsAreTheSameForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c/d/e");
+
+        assertThat(path.startsWith("a/b/c")).isTrue();
     }
 
 
@@ -410,10 +404,24 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureEndsWithReturnsFalseIfPathRootDoesNotMatch() {
+    public void ensureEndsWithReturnsFalseIfTheLastNameElementDoesNotMatch() {
         Path path = S3_FILE_SYSTEM.getPath("a/b/c");
 
-        assertThat(path.endsWith("a/b/c")).isFalse();
+        assertThat(path.endsWith("a/b")).isFalse();
+    }
+
+    @Test
+    public void ensureEndsWithReturnsTrueWhenNumberOfNameElementsDifferAndTheEndingNameElementsAreTheSameForRoot() {
+        Path path = S3_FILE_SYSTEM.getPath("/e/a/b/c/d");
+
+        assertThat(path.endsWith("/a/b/c/d")).isTrue();
+    }
+
+    @Test
+    public void ensureEndsWithReturnsTrueWhenNumberOfNameElementsDifferAndTheEndingNameElementsAreTheSameForRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("f/e/a/b/c");
+
+        assertThat(path.endsWith("a/b/c")).isTrue();
     }
 
 
@@ -451,36 +459,35 @@ public class S3PathTest {
     public void ensureNormalizeReturnsThePathGivenIfThereAreNoRedundantNameElements() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
 
-        assertThat(path.normalize()).isEqualTo("/a/b/c");
+        assertThat(path.normalize()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b/c"));
     }
 
     @Test
     public void ensureNormalizeReturnsAPathWithAllSinglePeriodNameElementsRemoved() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/.");
 
-        assertThat(path.normalize()).isEqualTo("/a/b");
+        assertThat(path.normalize()).isEqualTo(S3_FILE_SYSTEM.getPath("/a/b"));
     }
 
     @Test
     public void ensureNormalizeReturnsAPathWithAllDoublePeriodNameElementsRemoved() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/..");
 
-        assertThat(path.normalize()).isEqualTo("/a");
+        assertThat(path.normalize()).isEqualTo(S3_FILE_SYSTEM.getPath("/a"));
     }
 
     @Test
     public void ensureNormalizeReturnsAnEmptyPathForARelativePathWithAllRedundantNameElements() {
         Path path = S3_FILE_SYSTEM.getPath("../././.");
 
-        assertThat(path.normalize()).isEqualTo("");
+        assertThat(path.normalize()).isEqualTo(S3_FILE_SYSTEM.getPath(""));
     }
 
-    //TODO find out what the actual outcome of an empty path is
     @Test
-    public void ensureNormalizeReturnsNullForEmptyPath() {
+    public void ensureNormalizeReturnsCurrentPathForEmptyPath() {
         Path path = S3_FILE_SYSTEM.getPath("");
 
-        assertThat(path.normalize()).isNull();
+        assertThat(path.normalize()).isEqualTo(path);
     }
 
 
@@ -672,15 +679,6 @@ public class S3PathTest {
         assertThat(path.toAbsolutePath()).isEqualTo("/a/b/c");
     }
 
-    @Test
-    public void ensureToAbsolutePathThrowsIOExceptionForEmptyPath() {
-        assertThatExceptionOfType(IOError.class).isThrownBy(() -> {
-            Path path = S3_FILE_SYSTEM.getPath("");
-            path.toAbsolutePath();
-        });
-    }
-
-
     /**
      * Returns the <em>real</em> path of an existing file.
      *
@@ -724,6 +722,13 @@ public class S3PathTest {
      *         return null;
      *     }
      */
+
+    @Test
+    public void ensureToRealPathReturnsAnAbsolutePathWhenTheGivenPathIsRelative() throws IOException {
+        Path path = S3_FILE_SYSTEM.getPath("a/b/c");
+
+        assertThat(path.toRealPath()).isEqualTo("/a/b/c");
+    }
 
 
     /**

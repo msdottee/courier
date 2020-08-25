@@ -1,6 +1,5 @@
 package io.github.msdottee.courier.service;
 
-import javax.swing.*;
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
@@ -30,6 +29,9 @@ public class S3Path implements Path {
         this.componentStartOffsets = getComponentStartOffsets().toArray(new Integer[] {});
         this.componentEndOffsets = getComponentEndOffsets().toArray(new Integer[] {});
     }
+
+    //use offsets when I need to use path components such as 'a' or '/'
+    //use path if you don't care about the path components
 
     private List<Integer> getComponentStartOffsets() {
         List<Integer> offsets = new ArrayList<>();
@@ -190,7 +192,7 @@ public class S3Path implements Path {
         if (path.length() == 0) {
             return 1;
         }
-        
+
         return componentStartOffsets.length;
     }
 
@@ -299,7 +301,13 @@ public class S3Path implements Path {
      */
     @Override
     public boolean startsWith(Path other) {
-        return path.startsWith(other.toString());
+        if (!(other instanceof S3Path) || other.getFileSystem() != getFileSystem()) {
+            return false;
+        }
+
+        S3Path otherS3Path = (S3Path) other;
+
+        return path.startsWith(otherS3Path.getPathString());
     }
 
     /**
@@ -327,7 +335,13 @@ public class S3Path implements Path {
      */
     @Override
     public boolean endsWith(Path other) {
-        return path.endsWith(other.toString());
+        if (!(other instanceof S3Path) || other.getFileSystem() != getFileSystem()) {
+            return false;
+        }
+
+        S3Path otherS3Path = (S3Path) other;
+
+        return path.endsWith(otherS3Path.getPathString());
     }
 
     /**
@@ -356,7 +370,49 @@ public class S3Path implements Path {
      */
     @Override
     public Path normalize() {
-        return this;
+        boolean[] skipComponentOffsets = new boolean[componentStartOffsets.length];
+
+        int unusedDotDotCount = 0;
+
+        for (int i = componentStartOffsets.length - 1; i >= 0; i--) {
+            String component = ((S3Path) getName(i)).getPathString();
+
+            if ("..".equals(component)) {
+                unusedDotDotCount++;
+                skipComponentOffsets[i] = true;
+            } else if (".".equals(component)) {
+                // Skip the current path element because . is redundant
+                skipComponentOffsets[i] = true;
+            } else if (unusedDotDotCount > 0) {
+                // Skip the current path element because the previous element was ..
+                unusedDotDotCount--;
+                skipComponentOffsets[i] = true;
+            } else {
+                skipComponentOffsets[i] = false;
+            }
+        }
+
+        StringBuilder pathBuilder = new StringBuilder();
+
+        if (isAbsolute()) {
+            pathBuilder.append(ROOT);
+        }
+
+        boolean hasComponentAppended = false;
+
+        for (int i = 0; i < skipComponentOffsets.length; i++) {
+            if (!skipComponentOffsets[i]) {
+                if (hasComponentAppended) {
+                    pathBuilder.append(SEPARATOR);
+                }
+
+                pathBuilder.append(((S3Path) getName(i)).path);
+
+                hasComponentAppended = true;
+            }
+        }
+
+        return new S3Path(fileSystem, pathBuilder.toString());
     }
 
     /**
@@ -496,6 +552,10 @@ public class S3Path implements Path {
      */
     @Override
     public Path toAbsolutePath() {
+        if (!path.startsWith("/")) {
+            String absolutePath = "/" + path.substring(0);
+            return new S3Path(fileSystem, absolutePath);
+        }
         return this;
     }
 
@@ -615,6 +675,10 @@ public class S3Path implements Path {
     public int compareTo(Path other) {
         S3Path otherS3 = (S3Path) other;
         return path.compareTo(otherS3.toString());
+    }
+
+    String getPathString() {
+        return path;
     }
 
     @Override
