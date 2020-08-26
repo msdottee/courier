@@ -15,6 +15,8 @@ public class S3Path implements Path {
 
     private static final char SEPARATOR = '/';
 
+    private static final String URL_SCHEME = "s3://";
+
     private final FileSystem fileSystem;
 
     private final String path;
@@ -271,7 +273,7 @@ public class S3Path implements Path {
             throw new IllegalArgumentException("Begin index is greater than the end index.");
         }
 
-        if (path.equals(getFileSystem().getSeparator())) {
+        if (componentStartOffsets.length == 0) {
             throw new IllegalArgumentException("Path has zero elements.");
         }
 
@@ -592,7 +594,9 @@ public class S3Path implements Path {
      */
     @Override
     public URI toUri() {
-        return null;
+        String absolutePath = getS3Path(toAbsolutePath()).path;
+
+        return URI.create(URL_SCHEME + absolutePath.substring(ROOT.length()));
     }
 
     /**
@@ -615,10 +619,11 @@ public class S3Path implements Path {
      */
     @Override
     public Path toAbsolutePath() {
-        if (!path.startsWith("/")) {
-            String absolutePath = "/" + path.substring(0);
+        if (!path.startsWith(ROOT)) {
+            String absolutePath = ROOT + path;
             return new S3Path(fileSystem, absolutePath);
         }
+
         return this;
     }
 
