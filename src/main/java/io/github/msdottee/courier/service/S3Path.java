@@ -770,8 +770,6 @@ public class S3Path implements Path {
 
     @Override
     public String toString() {
-        return "S3Path{" +
-                "path='" + path + '\'' +
-                '}' ;
+        return path;
     }
 }

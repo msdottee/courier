@@ -564,4 +564,11 @@ public class S3PathTest {
             S3_FILE_SYSTEM.getPath("/a/b/c").compareTo((Path) null);
         });
     }
+
+    @Test
+    public void ensureToStringReturnsPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.toString()).isEqualTo("/a/b/c");
+    }
 }
