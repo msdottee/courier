@@ -32,9 +32,6 @@ public class S3Path implements Path {
         this.componentEndOffsets = getComponentEndOffsets().toArray(new Integer[] {});
     }
 
-    //use offsets when I need to use path components such as 'a' or '/'
-    //use path if you don't care about the path components
-
     private List<Integer> getComponentStartOffsets() {
         List<Integer> offsets = new ArrayList<>();
 

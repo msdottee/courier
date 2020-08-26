@@ -196,6 +196,7 @@ public class S3PathTest {
         assertThat(path.getName(2)).isEqualTo(new S3Path(S3_FILE_SYSTEM, "c"));
     }
 
+
     @Test
     public void ensureGetNameThrowsExceptionOnNegativeIndex() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
@@ -228,7 +229,15 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureSubpathThrowsExceptionOnNegativeBeginIndex() {
+    public void ensureSubpathThrowsIllegalArgumentExceptionForEmptyPath() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            Path path = S3_FILE_SYSTEM.getPath("");
+            path.subpath(0, 0);
+        });
+    }
+
+    @Test
+    public void ensureSubpathThrowsIllegalArgumentExceptionOnNegativeBeginIndex() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/a");
             path.subpath(-1, 1);
@@ -236,7 +245,7 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureSubpathThrowsExceptionOnNegativeEndIndex() {
+    public void ensureSubpathThrowsIllegalArgumentExceptionOnNegativeEndIndex() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/a");
             path.subpath(0, -1);
@@ -244,15 +253,15 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureSubpathThrowsExceptionOnIndexOutOfBoundsForBeginIndex() {
+    public void ensureSubpathThrowsIllegalArugmentExceptionOnIndexOutOfBoundsForBeginIndexGreaterThanNumberOfNameElements() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/a");
-            path.subpath(1, 2);
+            path.subpath(3, 2);
         });
     }
 
     @Test
-    public void ensureSubpathThrowsExceptionOnIndexOutOfBoundsForEndIndexGreaterThanNumberOfNameElements() {
+    public void ensureSubpathThrowsIllegalArgumentExceptionOnIndexOutOfBoundsForEndIndexGreaterThanNumberOfNameElements() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/a");
             path.subpath(0, 2);
@@ -260,7 +269,7 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureSubpathThrowsExceptionOnIndexOutOfBoundsForEndIndexLessThanBeginIndex() {
+    public void ensureSubpathThrowsIllegalArgumentExceptionOnIndexOutOfBoundsForEndIndexLessThanBeginIndex() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
             path.subpath(2, 1);
@@ -268,7 +277,7 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureSubpathThrowsExceptionOnZeroElements() {
+    public void ensureSubpathThrowsIllegalArgumentExceptionForRootPath() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             Path path = S3_FILE_SYSTEM.getPath("/");
             path.subpath(0, 1);
@@ -311,6 +320,13 @@ public class S3PathTest {
     }
 
     @Test
+    public void ensureStartsWithReturnsFalseForNonS3Path() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.startsWith(Paths.get("/a/b"))).isFalse();
+    }
+
+    @Test
     public void ensureEndsWithReturnsTrueForSameRootAndNameElements() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
 
@@ -336,6 +352,13 @@ public class S3PathTest {
         Path path = S3_FILE_SYSTEM.getPath("f/e/a/b/c");
 
         assertThat(path.endsWith("a/b/c")).isTrue();
+    }
+
+    @Test
+    public void ensureEndsWithReturnsFalseForNonS3Path() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
+
+        assertThat(path.endsWith(Paths.get("/a/b/c"))).isFalse();
     }
 
     @Test
@@ -423,9 +446,16 @@ public class S3PathTest {
     }
 
     @Test
-    public void ensureRelativizeThrowsIllegalArgumentExceptionWithARootPathAndRelativePath() {
+    public void ensureRelativizeThrowsIllegalArgumentExceptionWhenCurrentPathIsRoot() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             S3_FILE_SYSTEM.getPath("/a/b/c").relativize(S3_FILE_SYSTEM.getPath("b/c"));
+        });
+    }
+
+    @Test
+    public void ensureRelativizeThrowsIllegalArgumentExceptionWhenCurrentPathIsRelative() {
+        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
+            S3_FILE_SYSTEM.getPath("a/b/c").relativize(S3_FILE_SYSTEM.getPath("/a/b/c"));
         });
     }
 
