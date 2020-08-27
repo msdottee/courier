@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.HashSet;
@@ -19,14 +18,18 @@ public class S3FileSystem extends FileSystem {
 
     private final S3FileSystemProvider s3FileSystemProvider;
 
-    private final AmazonS3 amazonS3;
+    private final AmazonS3 s3Client;
 
     private final String bucket;
 
-    public S3FileSystem(final S3FileSystemProvider s3FileSystemProvider, final AmazonS3 amazonS3, final String bucket) {
+    public S3FileSystem(final S3FileSystemProvider s3FileSystemProvider, final AmazonS3 s3Client, final String bucket) {
         this.s3FileSystemProvider = s3FileSystemProvider;
-        this.amazonS3 = amazonS3;
+        this.s3Client = s3Client;
         this.bucket = bucket;
+    }
+
+    public String getBucket() {
+        return this.bucket;
     }
 
     /**
@@ -431,12 +434,12 @@ public class S3FileSystem extends FileSystem {
         if (o == null || getClass() != o.getClass()) return false;
         S3FileSystem that = (S3FileSystem) o;
         return Objects.equals(s3FileSystemProvider, that.s3FileSystemProvider) &&
-                Objects.equals(amazonS3, that.amazonS3) &&
+                Objects.equals(s3Client, that.s3Client) &&
                 Objects.equals(bucket, that.bucket);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(s3FileSystemProvider, amazonS3, bucket);
+        return Objects.hash(s3FileSystemProvider, s3Client, bucket);
     }
 }

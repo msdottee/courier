@@ -1,6 +1,7 @@
 package io.github.msdottee.courier.service;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.S3Object;
 
 import java.io.IOException;
 import java.net.URI;
@@ -16,10 +17,10 @@ import java.util.Set;
 
 public class S3FileSystemProvider extends FileSystemProvider {
 
-    private final AmazonS3 amazonS3;
+    private final AmazonS3 s3Client;
 
-    public S3FileSystemProvider(AmazonS3 amazonS3) {
-        this.amazonS3 = amazonS3;
+    public S3FileSystemProvider(AmazonS3 s3Client) {
+        this.s3Client = s3Client;
     }
 
     /**
@@ -68,7 +69,7 @@ public class S3FileSystemProvider extends FileSystemProvider {
             throw new IllegalArgumentException("Invalid scheme provided. s3 is the only supported scheme.");
         }
 
-        return new S3FileSystem(this, amazonS3, uri.getHost());
+        return new S3FileSystem(this, s3Client, uri.getHost());
     }
 
     /**
@@ -418,7 +419,11 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public void checkAccess(Path path, AccessMode... modes) throws IOException {
+        S3FileSystem s3FileSystem = (S3FileSystem) path.getFileSystem();
 
+        if (!s3Client.doesObjectExist(s3FileSystem.getBucket(), path.toString())) {
+            throw new NoSuchFileException(path.toString());
+        }
     }
 
     /**

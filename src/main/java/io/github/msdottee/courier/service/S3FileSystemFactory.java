@@ -17,7 +17,7 @@ import java.util.HashMap;
 public class S3FileSystemFactory implements FileSystemFactory {
 
     @Autowired
-    private AmazonS3 amazonS3;
+    private AmazonS3 s3Client;
 
     @Value("${aws.s3.bucket}")
     private String awsS3Bucket;
@@ -41,6 +41,6 @@ public class S3FileSystemFactory implements FileSystemFactory {
      */
     @Override
     public FileSystem createFileSystem(SessionContext session) throws IOException {
-        return new S3FileSystemProvider(amazonS3).newFileSystem(URI.create("s3://" + awsS3Bucket), new HashMap<>());
+        return new S3FileSystemProvider(s3Client).newFileSystem(URI.create("s3://" + awsS3Bucket), new HashMap<>());
     }
 }

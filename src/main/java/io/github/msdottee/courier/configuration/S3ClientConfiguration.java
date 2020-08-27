@@ -1,6 +1,11 @@
 package io.github.msdottee.courier.configuration;
 
+import com.amazonaws.ClientConfiguration;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class AmazonS3Configuration {
+public class S3ClientConfiguration {
 
     @Value("${aws.s3.endpoint:@null}")
     private String awsS3Endpoint;
@@ -50,5 +55,20 @@ public class AmazonS3Configuration {
         }
 
         return amazonS3ClientBuilder.build();
+
+        /*
+        S3ClientBuilder s3ClientBuilder = S3Client.builder();
+        if (null != awsS3Endpoint) {
+            S3Configuration s3Configuration = S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build();
+
+            s3ClientBuilder.region(Region.of(awsS3Region));
+            s3ClientBuilder.serviceConfiguration(s3Configuration);
+            s3ClientBuilder.endpointOverride(URI.create(awsS3Endpoint));
+        }
+
+        return s3ClientBuilder.build();
+        */
     }
 }
