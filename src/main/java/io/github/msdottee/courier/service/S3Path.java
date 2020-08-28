@@ -721,6 +721,18 @@ public class S3Path implements Path {
     }
 
     /**
+     * Returns the path as an S3 key.
+     *
+     * <p>This path implementation treats paths as UNIX paths, which means that they start with a /. S3 keys do not
+     * start with a /. This method strips / from the path to turn it into an S3 key.
+     *
+     * @return An S3 key.
+     */
+    public String getS3Key() {
+        return getS3Path(normalize()).path.substring(ROOT.length());
+    }
+
+    /**
      * Compares two abstract paths lexicographically. The ordering defined by
      * this method is provider specific, and in the case of the default
      * provider, platform specific. This method does not access the file system

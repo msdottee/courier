@@ -1,5 +1,6 @@
 package io.github.msdottee.courier.service;
 
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import org.apache.sshd.client.subsystem.sftp.fs.SftpFileSystem;
 
 import java.nio.file.Files;
@@ -8,6 +9,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class S3FileAttributes implements BasicFileAttributes, PosixFileAttributes {
+
+    private final ObjectMetadata objectMetadata;
+    private final String path;
+
+    public S3FileAttributes(ObjectMetadata objectMetadata, String path) {
+        this.objectMetadata = objectMetadata;
+        this.path = path;
+    }
 
     /**
      * Returns the time of last modification.
@@ -22,7 +31,11 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
      */
     @Override
     public FileTime lastModifiedTime() {
-        return FileTime.fromMillis(0L);
+        if (objectMetadata.getLastModified() == null) {
+            return FileTime.fromMillis(0L);
+        }
+
+        return FileTime.fromMillis(objectMetadata.getLastModified().getTime());
     }
 
     /**
@@ -55,7 +68,7 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
      */
     @Override
     public FileTime creationTime() {
-        return FileTime.fromMillis(0L);
+        return lastModifiedTime();
     }
 
     /**
@@ -65,7 +78,7 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
      */
     @Override
     public boolean isRegularFile() {
-        return false;
+        return !isDirectory();
     }
 
     /**
@@ -75,7 +88,7 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
      */
     @Override
     public boolean isDirectory() {
-        return true;
+        return objectMetadata.getLastModified() == null;
     }
 
     /**
@@ -111,7 +124,7 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
      */
     @Override
     public long size() {
-        return 0;
+        return objectMetadata.getContentLength();
     }
 
     /**
@@ -140,7 +153,7 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
      */
     @Override
     public Object fileKey() {
-        return null;
+        return path;
     }
 
     /**
@@ -180,15 +193,12 @@ public class S3FileAttributes implements BasicFileAttributes, PosixFileAttribute
         return new HashSet<>() {{
             add(PosixFilePermission.OWNER_READ);
             add(PosixFilePermission.OWNER_WRITE);
-            add(PosixFilePermission.OWNER_EXECUTE);
 
             add(PosixFilePermission.GROUP_READ);
             add(PosixFilePermission.GROUP_WRITE);
-            add(PosixFilePermission.GROUP_EXECUTE);
 
             add(PosixFilePermission.OTHERS_READ);
             add(PosixFilePermission.OTHERS_WRITE);
-            add(PosixFilePermission.OTHERS_EXECUTE);
         }};
     }
 }

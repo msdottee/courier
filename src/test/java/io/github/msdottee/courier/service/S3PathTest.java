@@ -538,6 +538,13 @@ public class S3PathTest {
     }
 
     @Test
+    public void ensureGetS3KeyReturnsPathWithoutRoot() {
+        Path path = S3_FILE_SYSTEM.getPath("/a");
+
+        assertThat(((S3Path) path).getS3Key()).isEqualTo("a");
+    }
+
+    @Test
     public void ensureCompareToReturnsZeroWhenBothPathsAreEqual() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
 

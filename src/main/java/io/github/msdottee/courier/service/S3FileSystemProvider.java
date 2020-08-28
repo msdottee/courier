@@ -1,7 +1,7 @@
 package io.github.msdottee.courier.service;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.S3Object;
+import com.amazonaws.services.s3.model.*;
 
 import java.io.IOException;
 import java.net.URI;
@@ -11,9 +11,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class S3FileSystemProvider extends FileSystemProvider {
 
@@ -191,7 +189,17 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-        return null;
+        return new DirectoryStream<Path>() {
+            @Override
+            public Iterator<Path> iterator() {
+                return Collections.emptyIterator();
+            }
+
+            @Override
+            public void close() throws IOException {
+
+            }
+        };
     }
 
     /**
@@ -420,8 +428,9 @@ public class S3FileSystemProvider extends FileSystemProvider {
     @Override
     public void checkAccess(Path path, AccessMode... modes) throws IOException {
         S3FileSystem s3FileSystem = (S3FileSystem) path.getFileSystem();
+        S3Path s3Path = (S3Path) path;
 
-        if (!s3Client.doesObjectExist(s3FileSystem.getBucket(), path.toString())) {
+        if (s3Client.listObjectsV2(s3FileSystem.getBucket(), s3Path.getS3Key()).getKeyCount() == 0) {
             throw new NoSuchFileException(path.toString());
         }
     }
@@ -460,7 +469,22 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type, LinkOption... options) throws IOException {
-        return (A) new S3FileAttributes();
+        S3FileSystem s3FileSystem = (S3FileSystem) path.getFileSystem();
+        S3Path s3Path = (S3Path) path;
+
+        try {
+            ObjectMetadata objectMetadata = s3Client.getObjectMetadata(s3FileSystem.getBucket(), s3Path.getS3Key());
+            return (A) new S3FileAttributes(objectMetadata, path.toString());
+        } catch (AmazonS3Exception exception) {
+            // Expected exception if the path represents a directory
+        }
+
+        if (s3Client.listObjectsV2(s3FileSystem.getBucket(), s3Path.getS3Key()).getKeyCount() > 0) {
+            ObjectMetadata objectMetadata = new ObjectMetadata();
+            return (A) new S3FileAttributes(objectMetadata, path.toString());
+        }
+
+        throw new NoSuchFileException(path.toString());
     }
 
     /**
