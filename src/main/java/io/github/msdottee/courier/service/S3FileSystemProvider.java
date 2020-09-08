@@ -189,10 +189,22 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-        return new DirectoryStream<Path>() {
+        S3FileSystem s3FileSystem = (S3FileSystem) dir.getFileSystem();
+        
+        ListObjectsV2Request listObjectsV2Request = new ListObjectsV2Request()
+                .withBucketName(s3FileSystem.getBucket())
+                .withDelimiter(s3FileSystem.getSeparator());
+
+        Iterator<Path> s3Paths = s3Client.listObjectsV2(listObjectsV2Request)
+                .getObjectSummaries()
+                .stream()
+                .map(s3ObjectSummary -> (Path) new S3Path(s3FileSystem, dir.toString() + s3ObjectSummary.getKey()))
+                .iterator();
+
+        return new DirectoryStream<>() {
             @Override
             public Iterator<Path> iterator() {
-                return Collections.emptyIterator();
+                return s3Paths;
             }
 
             @Override
