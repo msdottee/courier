@@ -12,6 +12,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.*;
+import java.util.stream.Stream;
 
 public class S3FileSystemProvider extends FileSystemProvider {
 
@@ -189,22 +190,33 @@ public class S3FileSystemProvider extends FileSystemProvider {
      */
     @Override
     public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+        S3Path s3Dir = (S3Path) dir;
+
         S3FileSystem s3FileSystem = (S3FileSystem) dir.getFileSystem();
         
         ListObjectsV2Request listObjectsV2Request = new ListObjectsV2Request()
                 .withBucketName(s3FileSystem.getBucket())
+                .withPrefix(s3Dir.toS3Prefix())
                 .withDelimiter(s3FileSystem.getSeparator());
 
-        Iterator<Path> s3Paths = s3Client.listObjectsV2(listObjectsV2Request)
+        ListObjectsV2Result listObjectsV2Result = s3Client.listObjectsV2(listObjectsV2Request);
+
+        Stream<Path> s3FilePaths = listObjectsV2Result
                 .getObjectSummaries()
                 .stream()
-                .map(s3ObjectSummary -> (Path) new S3Path(s3FileSystem, dir.toString() + s3ObjectSummary.getKey()))
-                .iterator();
+                .map(s3ObjectSummary -> (Path) new S3Path(s3FileSystem, dir.toString() + s3ObjectSummary.getKey()));
+
+        Stream<Path> s3DirectoryPaths = listObjectsV2Result
+                .getCommonPrefixes()
+                .stream()
+                .map(s3Prefix -> (Path) new S3Path(s3FileSystem, s3Prefix));
+
+        Stream<Path> s3Paths = Stream.concat(s3DirectoryPaths, s3FilePaths);
 
         return new DirectoryStream<>() {
             @Override
             public Iterator<Path> iterator() {
-                return s3Paths;
+                return s3Paths.iterator();
             }
 
             @Override

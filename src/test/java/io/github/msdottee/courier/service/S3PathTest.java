@@ -578,4 +578,18 @@ public class S3PathTest {
 
         assertThat(path.toString()).isEqualTo("/a/b/c");
     }
+
+    @Test
+    public void ensureToS3PrefixReturnsPrefixForAbsolutePath() {
+        S3Path s3Path = (S3Path) S3_FILE_SYSTEM.getPath("/a/b");
+
+        assertThat(s3Path.toS3Prefix()).isEqualTo("a/b/");
+    }
+
+    @Test
+    public void ensureToS3PrefixReturnsPrefixForRelativePath() {
+        S3Path s3Path = (S3Path) S3_FILE_SYSTEM.getPath("a/b");
+
+        assertThat(s3Path.toS3Prefix()).isEqualTo("a/b/");
+    }
 }

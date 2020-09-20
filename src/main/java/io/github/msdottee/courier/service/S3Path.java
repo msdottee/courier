@@ -784,4 +784,9 @@ public class S3Path implements Path {
     public String toString() {
         return path;
     }
+
+    public String toS3Prefix() {
+        // S3 Prefixes must not contain a leading / and must end with a trailing /
+        return ((S3Path) toAbsolutePath()).path.substring(ROOT.length()) + "/";
+    }
 }
