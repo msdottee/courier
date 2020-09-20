@@ -729,7 +729,7 @@ public class S3Path implements Path {
      * @return An S3 key.
      */
     public String getS3Key() {
-        return getS3Path(normalize()).path.substring(ROOT.length());
+        return getS3Path(normalize().toAbsolutePath()).path.substring(ROOT.length());
     }
 
     /**
@@ -786,7 +786,14 @@ public class S3Path implements Path {
     }
 
     public String toS3Prefix() {
+        String s3Path = normalize().toAbsolutePath().toString();
+
+        if (ROOT.equals(s3Path)) {
+            // The root directory must be an empty string
+            return "";
+        }
+
         // S3 Prefixes must not contain a leading / and must end with a trailing /
-        return ((S3Path) toAbsolutePath()).path.substring(ROOT.length()) + "/";
+        return s3Path.substring(ROOT.length()) + "/";
     }
 }

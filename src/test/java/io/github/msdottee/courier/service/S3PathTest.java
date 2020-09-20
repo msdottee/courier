@@ -545,6 +545,21 @@ public class S3PathTest {
     }
 
     @Test
+    public void ensureGetS3KeyNormalizesPath() {
+        Path path = S3_FILE_SYSTEM.getPath("/a/../b");
+
+        assertThat(((S3Path) path).getS3Key()).isEqualTo("b");
+
+    }
+
+    @Test
+    public void ensureGetS3KeyConvertsRelativePath() {
+        Path path = S3_FILE_SYSTEM.getPath("a/b");
+
+        assertThat(((S3Path) path).getS3Key()).isEqualTo("a/b");
+    }
+
+    @Test
     public void ensureCompareToReturnsZeroWhenBothPathsAreEqual() {
         Path path = S3_FILE_SYSTEM.getPath("/a/b/c");
 
@@ -591,5 +606,19 @@ public class S3PathTest {
         S3Path s3Path = (S3Path) S3_FILE_SYSTEM.getPath("a/b");
 
         assertThat(s3Path.toS3Prefix()).isEqualTo("a/b/");
+    }
+
+    @Test
+    public void ensureToS3PrefixReturnsEmptyStringForRootPath() {
+        S3Path s3Path = (S3Path) S3_FILE_SYSTEM.getPath("/");
+
+        assertThat(s3Path.toS3Prefix()).isEqualTo("");
+    }
+
+    @Test
+    public void ensureToS3PrefixNormalizesThePath() {
+        S3Path s3Path = (S3Path) S3_FILE_SYSTEM.getPath("/a/../b");
+
+        assertThat(s3Path.toS3Prefix()).isEqualTo("b/");
     }
 }

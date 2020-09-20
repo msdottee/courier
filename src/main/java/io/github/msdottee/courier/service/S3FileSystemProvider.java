@@ -204,7 +204,7 @@ public class S3FileSystemProvider extends FileSystemProvider {
         Stream<Path> s3FilePaths = listObjectsV2Result
                 .getObjectSummaries()
                 .stream()
-                .map(s3ObjectSummary -> (Path) new S3Path(s3FileSystem, dir.toString() + s3ObjectSummary.getKey()));
+                .map(s3ObjectSummary -> (Path) new S3Path(s3FileSystem, s3ObjectSummary.getKey()));
 
         Stream<Path> s3DirectoryPaths = listObjectsV2Result
                 .getCommonPrefixes()
