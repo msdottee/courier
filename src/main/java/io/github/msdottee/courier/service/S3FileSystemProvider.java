@@ -3,8 +3,11 @@ package io.github.msdottee.courier.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.*;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.URI;
+import java.nio.channels.FileChannel;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -561,5 +564,50 @@ public class S3FileSystemProvider extends FileSystemProvider {
     @Override
     public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
 
+    }
+
+    @Override
+    public FileChannel newFileChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+        S3FileSystem s3FileSystem = (S3FileSystem) path.getFileSystem();
+        S3Path s3Path = (S3Path) path;
+
+        boolean isWrite = options.stream().anyMatch(openOption -> StandardOpenOption.WRITE == openOption);
+
+        if (isWrite) {
+            return createWriteableFileChannel(s3FileSystem, s3Path);
+        } else {
+            return createReadableFileChannel(s3FileSystem, s3Path);
+        }
+    }
+
+    private FileChannel createWriteableFileChannel(S3FileSystem s3FileSystem, S3Path s3Path) throws IOException {
+        File tempFile = createTempFile();
+
+        try {
+            return FileChannel.open(tempFile.toPath(), StandardOpenOption.WRITE);
+        } catch (Exception exception) {
+            tempFile.delete();
+            throw  exception;
+        }
+    }
+
+    private FileChannel createReadableFileChannel(S3FileSystem s3FileSystem, S3Path s3Path) throws IOException {
+        File tempFile = createTempFile();
+
+        try {
+            GetObjectRequest getObjectRequest = new GetObjectRequest(s3FileSystem.getBucket(), s3Path.getS3Key());
+            s3Client.getObject(getObjectRequest, tempFile);
+
+            return FileChannel.open(tempFile.toPath(), StandardOpenOption.READ, StandardOpenOption.DELETE_ON_CLOSE);
+        } catch (Exception exception) {
+            tempFile.delete();
+            throw exception;
+        }
+    }
+
+    private File createTempFile() throws IOException {
+        File tempFile = File.createTempFile("courier-", ".tmp");
+        tempFile.deleteOnExit();
+        return tempFile;
     }
 }
